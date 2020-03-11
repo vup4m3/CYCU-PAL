@@ -1,8 +1,3 @@
-/**
- * TODO object Scanner
- * TODO object Parser
- * TODO object Token
-*/
 # include <stdio.h>
 # include <iostream>
 # include <string>
@@ -12,56 +7,24 @@ using namespace std;
 
 enum Type {
   IDENTIFIER,  
-  CONSTANT,    // e.g., 35, 35.67, 'a', "Hi, there", true, false
-               //       .35, 35., 0023
-  INT,         // int
-  FLOAT,       // float
-  CHAR,        // char
-  BOOL,        // bool
-  STRING,      // string
-  VOID,        // void
-  IF,          // if 
-  ELSE,        // else
-  WHILE,       // while
-  DO,          // do
-  RETURN,      // return
   LPAR,        // (
   RPAR,        // )
-  LSQB,        // [
-  RSQB,        // ]
-  LBRACE,      // {
-  RBRACE,      // }
   PLUS,        // +
   MINUS,       // -
   STAR,        // *
   SLASH,       // /
-  PERCENT,     // %
-  CIRCUMFLEX,  // ^
   GREATER,     // >
   LESS,        // <
   GE,          // >=
   LE,          // <=
-  EQEQ,        // ==
-  NEQ,         // !=
-  AMPER,       // &
-  VBAR,        // |
+  NEQ,         // <>
   EQ,          // =
-  NOT,         // !
-  AND,         // &&
-  OR,          // ||
-  PE,          // +=
-  ME,          // -=
-  TE,          // *=
-  DE,          // /=
-  RE,          // %=
-  PP,          // ++
-  MM,          // --
-  RS,          // >>
-  LS,          // <<
   SEMI,        // ;
   COMMA,       // ,
-  QUE,         // ?
-  COLON        // :
+  ASSIGN,      // :=
+  INT_VALUE,
+  FLOAT_VALUE,
+  QUIT         // quit
 };
 
 class Token {
@@ -69,17 +32,37 @@ public:
   Token( string str, int type ) {
     mName_ = str;
     mTtype_ = type;
+    mEmpty_ = false;
   } // Token()
-  string get_name() {
-    return mName_;
-  } // get_name()
-  int get_type() {
-    return mTtype_;
+
+  Token() {
+    mName_ = "";
+    mTtype_ = 0;
+    mEmpty_ = true; 
+  } // Token()
+
+  void Delete() {
+    mName_ = "";
+    mTtype_ = 0;
+    mEmpty_ = true;
   }
+
+  string Name() {
+    return mName_;
+  } // Name()
+
+  int Type() {
+    return mTtype_;
+  } // Type()
+
+  bool Empty() {
+    return mEmpty_;
+  } // Empty()
 
 private:
   string mName_;
   int mTtype_;
+  bool mEmpty_;
 };
 
 class Scanner {
@@ -87,55 +70,80 @@ class Scanner {
  * * Do Lexical Analysis
  * TODO GetToken
  * TODO PeekToken
+ * TODO Solve the column problem
 */
 public:
   Scanner() {
-    mTokens_.clear();
-    mCurrent_Column_ = 0;
-    mCurrent_Line_ = 0;
-    mLine_Buffer_ = "";
+    Reset();
   } // Scanner()
-  Token Peek_Token() {
-    if ( mTokens_.size != 0 ) {
-      Token temp = mTokens_.front();
-      mTokens_.erase(mTokens_.begin());
-      return temp;
-    } // if
-    else {
-      /**
-       * TODO when mTokens is enpty, than scan a new token list in
-       */
-    } // else
-  }
-  Token Get_Token() {
-    if ( mTokens_.size != 0 ) {
-      Token temp = mTokens_.front();
-      mTokens_.erase(mTokens_.begin());
-      return temp;
-    } // if
-    else {
-      /**
-       * TODO when mTokens is enpty, than scan a new token list in
-       */
-    } // else
-  }
 
-private:
-  vector<Token> mTokens_;
-  string mLine_Buffer_;
-  int mCurrent_Column_, mCurrent_Line_;
   void Reset() {
-    mTokens_.clear();
     mCurrent_Column_ = 0;
     mCurrent_Line_ = 0;
     mLine_Buffer_ = "";
   } // Reset()
-  string Read_line_() {
-    string str;
-    scanf ( "%s", &str);
-    return str;
-  } // Read_line
+
+  Token Peek_Token() { // TODO 
+    if ( !mNext_Token_.Empty() ) 
+      return mNext_Token_;
+    else {
+      /**
+       * TODO when mTokens is enpty, than scan a new token
+       */
+    } // else
+  } // Peek_Token()
   
+  Token Get_Token() {
+    // TODO Peek_Token and delete it
+  } // Get_Token()
+
+private:
+  Token mNext_Token_; // * Next Token save in Scanner
+  string mLine_Buffer_; // * Buffer of new line from keyboard input
+  int mCurrent_Column_, mCurrent_Line_;
+
+  bool Read_line_() {
+    /**
+     * * Read a line from keyboard input
+     * * Save it in mLine_Buffer
+    */
+    string str;
+    char ch;
+    if ( scanf( "%c", & ch) != EOF ) {
+      do {
+        mLine_Buffer_ += ch;
+      } while ( scanf( "%c", & ch) != EOF && ch != '\n' );
+      if (ch = '\n') {
+        mCurrent_Line_++;
+        mCurrent_Column_ = 0;
+        mLine_Buffer_ += ch;
+      }
+      return true;
+    } // if ()
+    else return false;
+  } // Read_line
+
+  char Peek_Char() {
+    /**
+     * * Peek a char from mLine_Buffer
+    */
+    if ( !mLine_Buffer_.empty() )
+      return mLine_Buffer_[mCurrent_Column_ - 1 ];
+    else {
+      if ( Read_line_() ) {
+        return Peek_Char();
+      }
+      else return '\0';
+    } // else
+  } // Peek_Char()
+
+  char Get_Char() {
+    char ch;
+    ch = Peek_Char();
+    if ( ch != '\0' )
+      mLine_Buffer_.erase(0);
+    return ch;
+  } // Get_Char()
 };
 
 class Parser {
@@ -155,7 +163,7 @@ int main() {
   scanf( "%d", &test_number );
   printf( ">>Program starts...\n" );
   do {
-    printf( ">" );
+    printf( "> " );
     // TODO call parser here than
   } while( !quit ); // TODO solve the problem of EOF
 } // main()
