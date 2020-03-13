@@ -38,31 +38,30 @@ enum Type {
 
 class Token {
 private:
-  string mName;
-  int mType;
+  string mName_;
+  int mType_;
 
 public:
   Token() {
-    mName = "";
-    mType = NONE;
+    Reset();
   } // Token()
 
   Token( string str, int type ) {
-    mName = str;
-    mType = type;
+    mName_ = str;
+    mType_ = type;
   } // Token()
 
   void Reset() {
-    mName = "";
-    mType = NONE;
+    mName_ = "";
+    mType_ = NONE;
   } // Delete()
 
   string Name() {
-    return mName;
+    return mName_;
   } // Name()
 
   int Type() {
-    return mType;
+    return mType_;
   } // Type()
 
 };
@@ -70,16 +69,10 @@ public:
 class Scanner {
 /**
  * * Do Lexical Analysis
- * TODO GetToken
- * TODO PeekToken
- * TODO Solve the column problem
 */
 public:
   Scanner() {
-    mNext_Token_ = Token();
-    mCurrent_Column_ = 0;
-    mCurrent_Line_ = 1;
-    mLine_Input_.clear();
+    Reset();
   } // Scanner()
 
   void Reset() {
@@ -110,7 +103,9 @@ public:
             mNext_Token_ = Token( token_name, type );
             return mNext_Token_;
           } // else if ()
-          else if ( type != BLANK && type != TAB && type != NEWLINE )
+          else if ( type == BLANK || type == TAB || type == NEWLINE  )
+            Get_Char_();
+          else if ( type != BLANK && type != TAB && type != NEWLINE ) 
             state = type;
         } // if ()
         else if ( !interupt ) {
@@ -185,6 +180,8 @@ public:
   
   Token Get_Token() {
     // TODO Peek_Token and delete it
+    Token token =  Peek_Token();
+    mNext_Token_.Reset();
     return Token();
   } // Get_Token()
 
@@ -257,17 +254,35 @@ class Parser {
 */
 public:
   Parser() {
-    mScanner = Scanner();
+    mScnr_ = Scanner();
   } // Parser()
 
-  void Debug() {
-    Token a;
-    a = mScanner.Peek_Token();
-    mScanner.Get_Token();
-    cout << a.Name() <<endl;
-  }
+  bool Is_Factor() {
+    if ( Is_Sign() )
+      ;
+
+  } // Is_Factor()
+
+  bool Is_Num() {
+    if ( mScnr_.Peek_Token().Type() == INTVALUE || mScnr_.Peek_Token().Type() == FLOATVALUE ) {
+      mTokens_.push_back( mScnr_.Get_Token() );
+      return true;
+    } // if()
+    else return false;
+
+  } // Is_Num()
+
+  bool Is_Sign() {
+    if ( mScnr_.Peek_Token().Type() == PLUS || mScnr_.Peek_Token().Type() == MINUS ) {
+      mTokens_.push_back( mScnr_.Get_Token() );
+      return true;
+    } // if()
+    else return false;
+
+  } // Is_Sign()
 private:
-  Scanner mScanner;
+  Scanner mScnr_;
+  vector<Token> mTokens_;
 };
 
 int main() {
