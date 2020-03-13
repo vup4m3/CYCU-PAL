@@ -1,4 +1,5 @@
 # include <iostream>
+# include <string>
 enum Type {
   IDENTIFIER,  
   CONSTANT,    // e.g., 35, 35.67, 'a', "Hi, there", true, false, .35, 35., 0023
@@ -66,14 +67,15 @@ private:
   int test_;
 };
 
-int main() {
-  Test a1;
-  Test b1;
-  b1 = a1;
-  a1.edit(1);
-  b1.edit(2);
-  std::cout << a1.test() << std::endl;
-  b1 = a1;
-  std::cout << b1.test() << std::endl;
+using namespace std;
 
+int main() {
+  char ch = '\0';
+  string str = "123";
+  while ( !cin.eof() ) {
+    // getline(cin, str);
+    cout << str << endl;
+
+  }
+  
 }
