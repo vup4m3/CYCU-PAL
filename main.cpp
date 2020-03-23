@@ -294,7 +294,6 @@ int main() {
   cout << ">>Program starts..." << endl;
   do {
     cout << "> ";
-    parser.Debug();
     // TODO call parser here than
   } while( !quit ); // TODO solve the problem of EOF
 } // main()
