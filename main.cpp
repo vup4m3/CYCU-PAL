@@ -155,7 +155,7 @@ public:
           else interupt = true;
         } // else if ()
         else { // interupt
-          if ( state == OTHER ) {
+          if ( state == OTHER || state == FLOATVALUE && token_name == "." ) {
             string error_msg = "Unrecognized token with first char : '";
             error_msg += Get_Char_();
             error_msg += "'"; 
@@ -164,7 +164,7 @@ public:
             return Token( "", PL_EOF );
           } // if()
           else 
-            mNext_Token_ = Token( token_name, type );
+            mNext_Token_ = Token( token_name, state );
           stop = true;
 
         } // else 
@@ -251,45 +251,113 @@ private:
 class Parser {
 /**
  * * Do Syntax Analysis 
+ * ! Parser should be rewrite
 */
 public:
   Parser() {
     mScnr_ = Scanner();
   } // Parser()
 
-  bool Is_Factor() {
-    if ( Is_Sign() )
+  vector<Token> Parse() {
+    if ( Is_Command_() ) 
+      return mTokens_;
+    else {
+      Error_();
+      return mTokens_;
+    } // else
+
+  } // Parse()
+
+  
+private:
+  Scanner mScnr_;
+  // * Store Tokens after parse
+  vector<Token> mTokens_;
+
+  // * Syntactic Error (token recognized)
+  void Error_() {
+    string error = "Unexpected token : '";
+    error += Get_Token_().Name();
+    mScnr_.Reset();
+    mTokens_.clear();
+    // TODO throw
+  } // Error()
+
+  // * Peek a Token from Scanner
+  int Peek_Token_Type_() {
+    return mScnr_.Peek_Token().Type();
+  } // Peek_Token_Type_()
+  
+  // * Get a Token from Scanner
+  Token Get_Token_() {
+    return mScnr_.Get_Token();
+  } // Get_Token_()
+
+  // * [SIGN] NUM | IDENT | '(' <Arith Exp> ')'
+  // TODO IDENTIFER
+  bool Is_Factor_() {
+    if ( Is_Sign_() )
       ;
+    if ( Is_Num_() )
+      return true;
+    else if ( Is_Id_() )
+      ;
+    else {
+      if ( Peek_Token_Type_() == LPAR ) {
+        mTokens_.push_back( Get_Token_() );
+        if ( true ) { // ! Is_Arith_Exp()
+          if ( Peek_Token_Type_() == RPAR ) {
+            mTokens_.push_back( Get_Token_() );
+            return true;
+          } // if ()
+          else {
+            Error_();
+            return false;
+          }
+        } // if ()
+        else {
+          Error_();
+          return false;
+        } // else 
+      } // if 
+    } // else 
+  } // Is_Factor_()
 
-  } // Is_Factor()
-
-  bool Is_Num() {
+  // * NUM
+  bool Is_Num_() {
     if ( mScnr_.Peek_Token().Type() == INTVALUE || mScnr_.Peek_Token().Type() == FLOATVALUE ) {
       mTokens_.push_back( mScnr_.Get_Token() );
       return true;
     } // if()
     else return false;
 
-  } // Is_Num()
+  } // Is_Num_()
+  
+  // * IDENT
+  bool Is_Id_() {
+    if ( Peek_Token_Type_() == IDENTIFIER ) {
+      mTokens_.push_back( Get_Token_() );
+      return true;
+    } // if 
+    else return false;
+  } // Is_Id_()
 
-  bool Is_Sign() {
+  // * - or +
+  bool Is_Sign_() {
     if ( mScnr_.Peek_Token().Type() == PLUS || mScnr_.Peek_Token().Type() == MINUS ) {
       mTokens_.push_back( mScnr_.Get_Token() );
       return true;
     } // if()
     else return false;
 
-  } // Is_Sign()
-private:
-  Scanner mScnr_;
-  vector<Token> mTokens_;
+  } // Is_Sign_()
 };
 
 int main() {
   int test_number = 0;
   char newline;
   Parser parser;
-  bool quit = true;
+  bool quit = false;
   // cin >> test_number;
   cout << ">>Program starts..." << endl;
   do {
