@@ -72,10 +72,12 @@ using namespace std;
 int main() {
   char ch = '\0';
   string str = "123";
-  while ( !cin.eof() ) {
-    // getline(cin, str);
-    cout << str << endl;
-
-  }
+  int a = 0;
+  int b = 0;
+  if ( ++a == 0 && ++b == 1 || ++b == 1 )
+    cout << "true" << endl;
+  
+  cout << a << endl;
+  cout << b << endl;
   
 }

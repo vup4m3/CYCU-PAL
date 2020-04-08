@@ -4,9 +4,19 @@
 
 using namespace std;
 
-enum Type {
+enum {
   LETTER = 224, // a~b A~Z
   DIGIT,        // 0~9
+  BLANK,
+  TAB,
+  NEWLINE,
+  NONE,
+  OTHER,
+  PL_EOF,
+  // Value
+  INTVALUE,
+  FLOATVALUE,
+  // Type
   IDENTIFIER,  
   DOT,          // '.'
   LPAR,         // (
@@ -24,16 +34,9 @@ enum Type {
   GE,           // >=
   LE,           // <=
   NEQ,          // <>
-  ASSIGN,       // :=
-  INTVALUE,
-  FLOATVALUE,
-  QUIT,        // quit
-  OTHER,
-  BLANK,
-  TAB,
-  NEWLINE,
-  NONE,
-  PL_EOF
+  ASSIGN,        // :=
+  // Reserved Word
+  QUIT        // quit
 };
 
 class Token {
@@ -86,9 +89,7 @@ public:
     int type, state = 0;
     bool stop = false, interupt = false;
     string token_name = "";
-    if ( mNext_Token_.Type() != NONE ) 
-      return mNext_Token_;
-    else {
+    if ( mNext_Token_.Type() == NONE ) {
       while ( !stop ) {
         if ( state == 0 ) {
           type = Input_Type_( Peek_Char_() );
@@ -105,7 +106,7 @@ public:
           } // else if ()
           else if ( type == BLANK || type == TAB || type == NEWLINE  )
             Get_Char_();
-          else if ( type != BLANK && type != TAB && type != NEWLINE ) 
+          else 
             state = type;
         } // if ()
         else if ( !interupt ) {
@@ -157,32 +158,30 @@ public:
         else { // interupt
           if ( state == OTHER || state == FLOATVALUE && token_name == "." ) {
             string error_msg = "Unrecognized token with first char : '";
-            error_msg += Get_Char_();
+            error_msg += token_name;
             error_msg += "'"; 
             Reset();
-            // throw error_msg;
-            return Token( "", PL_EOF );
+            throw error_msg;
           } // if()
+          else if ( state == IDENTIFIER )
+            mNext_Token_ = Token( token_name, Reserved_Word_( token_name ) );
           else 
             mNext_Token_ = Token( token_name, state );
           stop = true;
 
         } // else 
 
-      } // while 
+      } // while()
 
-      return mNext_Token_;
+    } // if() 
 
-    } // else
-
-    return Token();
+    return mNext_Token_;
   } // Peek_Token()
   
   Token Get_Token() {
-    // TODO Peek_Token and delete it
     Token token =  Peek_Token();
     mNext_Token_.Reset();
-    return Token();
+    return token;
   } // Get_Token()
 
 private:
@@ -246,12 +245,19 @@ private:
     else return false;
   } // Is_One_Char_Token_Type_()
 
+  int Reserved_Word_( string str ) {
+    /*if ( str == "quit" )
+      return QUIT;
+      else
+    */
+    return IDENTIFIER;
+  } // Reserved_Word_()
+
 };
 
 class Parser {
 /**
  * * Do Syntax Analysis 
- * ! Parser should be rewrite
 */
 public:
   Parser() {
@@ -261,107 +267,211 @@ public:
   vector<Token> Parse() {
     if ( Is_Command_() ) 
       return mTokens_;
-    else {
+    else 
       Error_();
-      return mTokens_;
-    } // else
 
   } // Parse()
 
-  
 private:
   Scanner mScnr_;
   // * Store Tokens after parse
   vector<Token> mTokens_;
 
+  // * If the Token match parameter, add it at the end of mTokens.
+  bool Push_If_Match_( int num ) {
+    if ( mScnr_.Peek_Token().Type() == num ) {
+      mTokens_.push_back( mScnr_.Get_Token() );
+      return true;
+    } // if 
+    else return false;
+  } // Push_If_Match()
+
   // * Syntactic Error (token recognized)
   void Error_() {
     string error = "Unexpected token : '";
-    error += Get_Token_().Name();
+    error += mScnr_.Get_Token().Name();
+    error += "'";
     mScnr_.Reset();
     mTokens_.clear();
-    // TODO throw
+    throw error;
   } // Error()
 
-  // * Peek a Token from Scanner
-  int Peek_Token_Type_() {
-    return mScnr_.Peek_Token().Type();
-  } // Peek_Token_Type_()
+  // * NUM
+  bool Is_Num_() {
+    if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) )
+      return true;
+    else return false;
+
+  } // Is_Num_()
   
-  // * Get a Token from Scanner
-  Token Get_Token_() {
-    return mScnr_.Get_Token();
-  } // Get_Token_()
+  // * - or +
+  bool Is_Sign_() {
+    if ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) )
+      return true;
+    else return false;
+  } // Is_Sign()
 
   // * [SIGN] NUM | IDENT | '(' <Arith Exp> ')'
-  // TODO IDENTIFER
   bool Is_Factor_() {
-    if ( Is_Sign_() )
-      ;
-    if ( Is_Num_() )
+    if ( Push_If_Match_( IDENTIFIER ) )
       return true;
-    else if ( Is_Id_() )
-      ;
+    else if ( Is_Sign_() && Is_Num_() || Is_Num_() )
+      return true;
     else {
-      if ( Peek_Token_Type_() == LPAR ) {
-        mTokens_.push_back( Get_Token_() );
-        if ( true ) { // ! Is_Arith_Exp()
-          if ( Peek_Token_Type_() == RPAR ) {
-            mTokens_.push_back( Get_Token_() );
+      if ( Push_If_Match_( LPAR ) ) {
+        if ( Is_Arith_Exp_() ) { 
+          if ( Push_If_Match_( RPAR ) )
             return true;
-          } // if ()
-          else {
-            Error_();
-            return false;
-          }
+          else 
+            Error_(); // * With out RPAR
         } // if ()
         else {
-          Error_();
+          Error_(); // * With out LPAR
           return false;
         } // else 
       } // if 
     } // else 
   } // Is_Factor_()
 
-  // * NUM
-  bool Is_Num_() {
-    if ( mScnr_.Peek_Token().Type() == INTVALUE || mScnr_.Peek_Token().Type() == FLOATVALUE ) {
-      mTokens_.push_back( mScnr_.Get_Token() );
-      return true;
-    } // if()
-    else return false;
+  // * <Term> ::= <Factor> { '*' <Factor> | '/' <Factor> }
+  bool Is_Term_() {
+    if ( Is_Factor_() ) {
+      while ( Push_If_Match_( STAR ) || Push_If_Match_( SLASH ) ) {
+        if ( !Is_Factor_() ) 
+          Error_();
+      } // while()
 
-  } // Is_Num_()
-  
-  // * IDENT
-  bool Is_Id_() {
-    if ( Peek_Token_Type_() == IDENTIFIER ) {
-      mTokens_.push_back( Get_Token_() );
       return true;
-    } // if 
+    } // if ()
     else return false;
-  } // Is_Id_()
+  } // Is_Term_()
 
-  // * - or +
-  bool Is_Sign_() {
-    if ( mScnr_.Peek_Token().Type() == PLUS || mScnr_.Peek_Token().Type() == MINUS ) {
-      mTokens_.push_back( mScnr_.Get_Token() );
+  // * <ArithExp> ::= <Term> { '+' <Term> | '-' <Term> }
+  bool Is_Arith_Exp_() {
+    if ( Is_Term_() ) {
+      while ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
+        if ( !Is_Term_() ) 
+          Error_();
+        else return true;
+      } // while()
+    } // if ()
+    else return false;
+  } // Is_Arith_Exp()
+
+  // * Not_Id_StartFactor ::= [ SIGN ] NUM | '(' <ArithExp> ')' 
+  bool Is_Not_ID_StartFactor_() {
+    if ( Is_Sign_() && Is_Num_() || Is_Num_() )
       return true;
-    } // if()
-    else return false;
+    else {
+      if ( Push_If_Match_( LPAR ) ) { // (
+        if ( Is_Arith_Exp_() ) { 
+          if ( Push_If_Match_( RPAR ) ) // )
+            return true;
+          else 
+            Error_(); // * With out RPAR
+        } // if ()
+        else 
+          Error_(); // * With out LPAR
+      } // if
+      else return false;
+    } // else
+  } // Not_Id_StartFactor_()
 
-  } // Is_Sign_()
+  // * <Not_ID_StartTerm> ::= <Not_ID_StartFactor> { '*' <Factor> | '/' <Factor> }
+  bool Is_Not_ID_StartTerm_() {
+    if ( Is_Not_ID_StartFactor_() ) {
+      while ( Push_If_Match_( STAR ) || Push_If_Match_( SLASH ) ) {
+        if ( !Is_Factor_() ) 
+          Error_();
+      } // while
+      
+      return true;
+    } // if
+    else return false;
+  } // Is_Not_ID_StartTerm_()
+
+  // * <Not_ID_StartArithExpOrBexp> ::= <Not_ID_StartTerm> { '+' <Term> || '-' <Term> }
+  bool Is_Not_ID_StartArithExpOrBexp_() {
+    if ( Is_Not_ID_StartTerm_() ) {
+      while ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
+        if ( !Is_Term_() ) 
+          Error_();
+      } // while
+      
+      return true;
+    } // if
+    else return false;
+  } // Is_Not_ID_StartArithExpOrBexp_()
+
+  // * '=' || '<>' || '>' || '<' || '>=' || '<='
+  bool Is_BooleanOperater_() {
+    return Push_If_Match_( EQ ) || Push_If_Match_( NEQ ) || Push_If_Match_( GREATER ) 
+        || Push_If_Match_( LESS ) || Push_If_Match_( GE ) || Push_If_Match_( LE );
+  } // Is_BooleanOperater_()
+
+  // * <IDlessArithExp> ::= { '+' <Term> | '-' <Term> | '*' <Factor> | '/' <Factor> } [<BooleanOperater> <ArithExp>]
+  bool Is_IDlessArithExp_() {
+    while ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
+      if ( !Is_Term_() ) 
+        Error_();
+    } // while
+    while ( Push_If_Match_( STAR ) || Push_If_Match_( SLASH ) ) {
+      if ( !Is_Factor_() ) 
+        Error_();
+    } // while
+    if ( Is_BooleanOperater_() ) {
+      if ( !Is_Arith_Exp_() ) 
+        Error_();
+      
+    } // if
+    return true;
+  } // Is_IDlessArithExp_()
+
+  // * <Command> ::= IDENT ( ':=' <ArithExp> | <IDlessArithExpOrBexp> ) ';' | <NOT_IDStartArithExpOrBexp> ';' | QUIT
+  bool Is_Command_() {
+    if ( Push_If_Match_( IDENTIFIER ) ) { // IDENT
+      if ( Push_If_Match_( ASSIGN ) ) { // :=
+        if ( Is_Arith_Exp_() ) {
+          if ( Push_If_Match_( SEMI ) )
+            return true;
+        } //if
+        Error_();
+      } // if
+      else if ( Is_IDlessArithExp_() && Push_If_Match_( SEMI ) ) 
+        return true;
+      else if ( Push_If_Match_( SEMI ) )
+        return true;
+      else Error_();
+    } // if ()
+    else if ( Is_Not_ID_StartArithExpOrBexp_() ) {
+      if ( Push_If_Match_( SEMI ) )
+        return true;
+      else 
+        Error_();
+    } // if
+    else if ( Push_If_Match_( QUIT ) )
+      return true;
+    else
+      Error_();
+  } // Is_Command_()
+
 };
 
 int main() {
   int test_number = 0;
   char newline;
   Parser parser;
+  vector<Token> tokens;
   bool quit = false;
   // cin >> test_number;
   cout << ">>Program starts..." << endl;
   do {
     cout << "> ";
-    // TODO call parser here than
+    try {
+      tokens = parser.Parse();
+    } // try
+    catch( string error_info ) {
+      cout << error_info << endl;
+    } // carch
   } while( !quit ); // TODO solve the problem of EOF
 } // main()
