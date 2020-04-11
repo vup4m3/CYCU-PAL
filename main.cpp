@@ -17,24 +17,26 @@ enum {
   INTVALUE,
   FLOATVALUE,
   // Type
-  IDENTIFIER,  
-  DOT,          // '.'
-  LPAR,         // (
-  RPAR,         // )
+  IDENTIFIER,
+  // Op
+  ASSIGN,        // :=
+  EQ,           // =
+  NEQ,          // <>
+  LESS,         // <
+  GREATER,      // >
+  LE,           // <=
+  GE,           // >=
   PLUS,         // +
   MINUS,        // -
   STAR,         // *
   SLASH,        // /
-  GREATER,      // >
-  LESS,         // <
-  EQ,           // =
+  LPAR,         // (
+  RPAR,         // )
   SEMI,         // ;
-  COMMA,        // ,
+  // None mean
   COLON,        // :
-  GE,           // >=
-  LE,           // <=
-  NEQ,          // <>
-  ASSIGN,        // :=
+  DOT,          // '.'
+  COMMA,        // ,
   // Reserved Word
   QUIT        // quit
 };
@@ -70,120 +72,7 @@ public:
 };
 
 class Scanner {
-/**
- * * Do Lexical Analysis
-*/
-public:
-  Scanner() {
-    Reset();
-  } // Scanner()
-
-  void Reset() {
-    mNext_Token_ = Token();
-    mCurrent_Column_ = 0;
-    mCurrent_Line_ = 1;
-    mLine_Input_.clear();
-  } // Reset()
-
-  Token Peek_Token() {  
-    int type, state = 0;
-    bool stop = false, interupt = false;
-    string token_name = "";
-    if ( mNext_Token_.Type() == NONE ) {
-      while ( !stop ) {
-        if ( state == 0 ) {
-          type = Input_Type_( Peek_Char_() );
-          if ( type == DIGIT )
-            state = INTVALUE;
-          else if ( type == DOT )
-            state = FLOATVALUE;
-          else if ( type == LETTER )
-            state = IDENTIFIER;
-          else if ( Is_One_Char_Token_Type_( type ) ) {
-            token_name = Get_Char_();
-            mNext_Token_ = Token( token_name, type );
-            return mNext_Token_;
-          } // else if ()
-          else if ( type == BLANK || type == TAB || type == NEWLINE  )
-            Get_Char_();
-          else 
-            state = type;
-        } // if ()
-        else if ( !interupt ) {
-          token_name += Get_Char_();
-          type = Input_Type_( Peek_Char_() );
-          if ( state == INTVALUE ) {
-            if ( type == DOT ) 
-              state = FLOATVALUE;
-            else if ( type != DIGIT ) 
-              interupt = true;
-          } // if ()
-          else if ( state == FLOATVALUE ) { 
-            if ( type != DIGIT )
-              interupt = true; 
-          } // else if ()
-          else if ( state == IDENTIFIER ) {
-            if ( type != LETTER && type != DIGIT )
-              interupt = true;
-          } // else if ()
-          else if ( state == SLASH ) {
-            if ( type == SLASH ) { // Comment
-              Reset();
-              return Peek_Token();
-            } // if
-            else interupt = true; // /
-          } // else if 
-          else if ( state == GREATER ) {
-            if ( type == EQ )
-              state = GE; // >=
-            else interupt = true; // >
-          } // else if ()
-          else if ( state == LESS ) {
-            if ( type == EQ )
-              state = LE; // <=
-            else if ( type == GREATER )
-              state = NEQ; // <>
-            else interupt = true; // <
-          } // else if ()
-          else if ( state == COLON ) {
-            if ( type == EQ )
-              state = ASSIGN; // :=
-            else {
-              state = OTHER;
-              interupt = true; // :
-            } // else  
-          } // else if ()
-          else interupt = true;
-        } // else if ()
-        else { // interupt
-          if ( state == OTHER || state == FLOATVALUE && token_name == "." ) {
-            string error_msg = "Unrecognized token with first char : '";
-            error_msg += token_name;
-            error_msg += "'"; 
-            Reset();
-            throw error_msg;
-          } // if()
-          else if ( state == IDENTIFIER )
-            mNext_Token_ = Token( token_name, Reserved_Word_( token_name ) );
-          else 
-            mNext_Token_ = Token( token_name, state );
-          stop = true;
-
-        } // else 
-
-      } // while()
-
-    } // if() 
-
-    return mNext_Token_;
-  } // Peek_Token()
-  
-  Token Get_Token() {
-    Token token =  Peek_Token();
-    mNext_Token_.Reset();
-    return token;
-  } // Get_Token()
-
+// * Do Lexical Analysis
 private:
   Token mNext_Token_; // * Next Token save in Scanner
   vector<char> mLine_Input_;
@@ -201,9 +90,9 @@ private:
         mLine_Input_.push_back(ch);
       else mLine_Input_.push_back('\0');
     } // if
-    
+
       return mLine_Input_[0];
-    
+
   } // Peek_Char()
 
   char Get_Char_() {
@@ -253,25 +142,121 @@ private:
     return IDENTIFIER;
   } // Reserved_Word_()
 
+public:
+  Scanner() {
+    Reset();
+  } // Scanner()
+
+  void Reset() {
+    mNext_Token_ = Token();
+    mCurrent_Column_ = 0;
+    mCurrent_Line_ = 1;
+    mLine_Input_.clear();
+  } // Reset()
+
+  Token Peek_Token() {
+    int type, state = 0;
+    bool stop = false, interupt = false;
+    string token_name = "";
+    if ( mNext_Token_.Type() == NONE ) {
+      while ( !stop ) {
+        if ( state == 0 ) {
+          type = Input_Type_( Peek_Char_() );
+          if ( type == DIGIT )
+            state = INTVALUE;
+          else if ( type == DOT )
+            state = FLOATVALUE;
+          else if ( type == LETTER )
+            state = IDENTIFIER;
+          else if ( Is_One_Char_Token_Type_( type ) ) {
+            token_name = Get_Char_();
+            mNext_Token_ = Token( token_name, type );
+            return mNext_Token_;
+          } // else if ()
+          else if ( type == BLANK || type == TAB || type == NEWLINE  )
+            Get_Char_();
+          else
+            state = type;
+        } // if ()
+        else if ( !interupt ) {
+          token_name += Get_Char_();
+          type = Input_Type_( Peek_Char_() );
+          if ( state == INTVALUE ) {
+            if ( type == DOT )
+              state = FLOATVALUE;
+            else if ( type != DIGIT )
+              interupt = true;
+          } // if ()
+          else if ( state == FLOATVALUE ) {
+            if ( type != DIGIT )
+              interupt = true;
+          } // else if ()
+          else if ( state == IDENTIFIER ) {
+            if ( type != LETTER && type != DIGIT )
+              interupt = true;
+          } // else if ()
+          else if ( state == SLASH ) {
+            if ( type == SLASH ) { // Comment
+              Reset();
+              return Peek_Token();
+            } // if
+            else interupt = true; // /
+          } // else if
+          else if ( state == GREATER ) {
+            if ( type == EQ )
+              state = GE; // >=
+            else interupt = true; // >
+          } // else if ()
+          else if ( state == LESS ) {
+            if ( type == EQ )
+              state = LE; // <=
+            else if ( type == GREATER )
+              state = NEQ; // <>
+            else interupt = true; // <
+          } // else if ()
+          else if ( state == COLON ) {
+            if ( type == EQ )
+              state = ASSIGN; // :=
+            else {
+              state = OTHER;
+              interupt = true; // :
+            } // else
+          } // else if ()
+          else interupt = true;
+        } // else if ()
+        else { // interupt
+          if ( state == OTHER || ( state == FLOATVALUE && token_name == "." ) ) {
+            string error_msg = "Unrecognized token with first char : '";
+            error_msg += token_name;
+            error_msg += "'";
+            Reset();
+            throw error_msg;
+          } // if()
+          else if ( state == IDENTIFIER )
+            mNext_Token_ = Token( token_name, Reserved_Word_( token_name ) );
+          else
+            mNext_Token_ = Token( token_name, state );
+          stop = true;
+
+        } // else
+
+      } // while()
+
+    } // if()
+
+    return mNext_Token_;
+  } // Peek_Token()
+
+  Token Get_Token() {
+    Token token =  Peek_Token();
+    mNext_Token_.Reset();
+    return token;
+  } // Get_Token()
+
 };
 
 class Parser {
-/**
- * * Do Syntax Analysis 
-*/
-public:
-  Parser() {
-    mScnr_ = Scanner();
-  } // Parser()
-
-  vector<Token> Parse() {
-    if ( Is_Command_() ) 
-      return mTokens_;
-    else 
-      Error_();
-
-  } // Parse()
-
+// * Do Syntax Analysis
 private:
   Scanner mScnr_;
   // * Store Tokens after parse
@@ -282,19 +267,9 @@ private:
     if ( mScnr_.Peek_Token().Type() == num ) {
       mTokens_.push_back( mScnr_.Get_Token() );
       return true;
-    } // if 
+    } // if
     else return false;
   } // Push_If_Match()
-
-  // * Syntactic Error (token recognized)
-  void Error_() {
-    string error = "Unexpected token : '";
-    error += mScnr_.Get_Token().Name();
-    error += "'";
-    mScnr_.Reset();
-    mTokens_.clear();
-    throw error;
-  } // Error()
 
   // * NUM
   bool Is_Num_() {
@@ -303,7 +278,7 @@ private:
     else return false;
 
   } // Is_Num_()
-  
+
   // * - or +
   bool Is_Sign_() {
     if ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) )
@@ -315,29 +290,29 @@ private:
   bool Is_Factor_() {
     if ( Push_If_Match_( IDENTIFIER ) )
       return true;
-    else if ( Is_Sign_() && Is_Num_() || Is_Num_() )
+    else if ( ( Is_Sign_() && Is_Num_() ) || Is_Num_() )
       return true;
     else {
       if ( Push_If_Match_( LPAR ) ) {
-        if ( Is_Arith_Exp_() ) { 
+        if ( Is_Arith_Exp_() ) {
           if ( Push_If_Match_( RPAR ) )
             return true;
-          else 
+          else
             Error_(); // * With out RPAR
         } // if ()
         else {
           Error_(); // * With out LPAR
           return false;
-        } // else 
-      } // if 
-    } // else 
+        } // else
+      } // if
+    } // else
   } // Is_Factor_()
 
   // * <Term> ::= <Factor> { '*' <Factor> | '/' <Factor> }
   bool Is_Term_() {
     if ( Is_Factor_() ) {
       while ( Push_If_Match_( STAR ) || Push_If_Match_( SLASH ) ) {
-        if ( !Is_Factor_() ) 
+        if ( !Is_Factor_() )
           Error_();
       } // while()
 
@@ -350,7 +325,7 @@ private:
   bool Is_Arith_Exp_() {
     if ( Is_Term_() ) {
       while ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
-        if ( !Is_Term_() ) 
+        if ( !Is_Term_() )
           Error_();
         else return true;
       } // while()
@@ -358,19 +333,19 @@ private:
     else return false;
   } // Is_Arith_Exp()
 
-  // * Not_Id_StartFactor ::= [ SIGN ] NUM | '(' <ArithExp> ')' 
+  // * Not_Id_StartFactor ::= [ SIGN ] NUM | '(' <ArithExp> ')'
   bool Is_Not_ID_StartFactor_() {
-    if ( Is_Sign_() && Is_Num_() || Is_Num_() )
+    if  (( Is_Sign_() && Is_Num_() ) || Is_Num_() )
       return true;
     else {
       if ( Push_If_Match_( LPAR ) ) { // (
-        if ( Is_Arith_Exp_() ) { 
+        if ( Is_Arith_Exp_() ) {
           if ( Push_If_Match_( RPAR ) ) // )
             return true;
-          else 
+          else
             Error_(); // * With out RPAR
         } // if ()
-        else 
+        else
           Error_(); // * With out LPAR
       } // if
       else return false;
@@ -381,10 +356,10 @@ private:
   bool Is_Not_ID_StartTerm_() {
     if ( Is_Not_ID_StartFactor_() ) {
       while ( Push_If_Match_( STAR ) || Push_If_Match_( SLASH ) ) {
-        if ( !Is_Factor_() ) 
+        if ( !Is_Factor_() )
           Error_();
       } // while
-      
+
       return true;
     } // if
     else return false;
@@ -394,10 +369,10 @@ private:
   bool Is_Not_ID_StartArithExpOrBexp_() {
     if ( Is_Not_ID_StartTerm_() ) {
       while ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
-        if ( !Is_Term_() ) 
+        if ( !Is_Term_() )
           Error_();
       } // while
-      
+
       return true;
     } // if
     else return false;
@@ -405,24 +380,24 @@ private:
 
   // * '=' || '<>' || '>' || '<' || '>=' || '<='
   bool Is_BooleanOperater_() {
-    return Push_If_Match_( EQ ) || Push_If_Match_( NEQ ) || Push_If_Match_( GREATER ) 
+    return Push_If_Match_( EQ ) || Push_If_Match_( NEQ ) || Push_If_Match_( GREATER )
         || Push_If_Match_( LESS ) || Push_If_Match_( GE ) || Push_If_Match_( LE );
   } // Is_BooleanOperater_()
 
   // * <IDlessArithExp> ::= { '+' <Term> | '-' <Term> | '*' <Factor> | '/' <Factor> } [<BooleanOperater> <ArithExp>]
   bool Is_IDlessArithExp_() {
     while ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
-      if ( !Is_Term_() ) 
+      if ( !Is_Term_() )
         Error_();
     } // while
     while ( Push_If_Match_( STAR ) || Push_If_Match_( SLASH ) ) {
-      if ( !Is_Factor_() ) 
+      if ( !Is_Factor_() )
         Error_();
     } // while
     if ( Is_BooleanOperater_() ) {
-      if ( !Is_Arith_Exp_() ) 
+      if ( !Is_Arith_Exp_() )
         Error_();
-      
+
     } // if
     return true;
   } // Is_IDlessArithExp_()
@@ -437,7 +412,7 @@ private:
         } //if
         Error_();
       } // if
-      else if ( Is_IDlessArithExp_() && Push_If_Match_( SEMI ) ) 
+      else if ( Is_IDlessArithExp_() && Push_If_Match_( SEMI ) )
         return true;
       else if ( Push_If_Match_( SEMI ) )
         return true;
@@ -446,7 +421,7 @@ private:
     else if ( Is_Not_ID_StartArithExpOrBexp_() ) {
       if ( Push_If_Match_( SEMI ) )
         return true;
-      else 
+      else
         Error_();
     } // if
     else if ( Push_If_Match_( QUIT ) )
@@ -455,11 +430,120 @@ private:
       Error_();
   } // Is_Command_()
 
+public:
+  Parser() {
+    mScnr_ = Scanner();
+  } // Parser()
+
+  // * Syntactic Error (token recognized)
+  void Error_() {
+    string error = "Unexpected token : '";
+    error += mScnr_.Get_Token().Name();
+    error += "'";
+    mScnr_.Reset();
+    mTokens_.clear();
+    throw error;
+  } // Error()
+
+  vector<Token> Parse() {
+    if ( Is_Command_() )
+      return mTokens_;
+    else
+      Error_();
+
+  } // Parse()
+
+};
+
+class Identifer {
+public:
+  Identifer( string name, float value, int type ) {
+    Name = name;
+    Value = value;
+    Type = type;
+  } // Identifer
+  string Name;
+  float Value;
+  int Type;
+
+};
+
+class IdTable {
+private:
+  vector<Identifer> mTable_;
+
+  void Error_( string id ) {
+      string msg = "Undefined identifier : '";
+      msg += id;
+      msg += "'";
+      throw msg;
+  } // mError()
+
+public:
+  Identifer Get_Value( string id ) {
+    for ( int i = 0; mTable_.size() != 0 && i < mTable_.size(); i++ ) {
+      if ( mTable_[i].Name == id )
+        return mTable_[i];
+    } // for
+
+    Error_( id ); // Can't find id
+  } // Get_Value()
+
+  void Assign( string id, float value, int type ) {
+    bool stop = false;
+    for ( int i = 0; mTable_.size() != 0 && i < mTable_.size() && !stop; i++ ) {
+      if ( id == mTable_[i].Name ) {
+        mTable_[i].Value = value;
+        mTable_[i].Type = type;
+        stop = true;
+      } // if
+    } // for
+
+    if ( !stop )
+      mTable_.push_back( Identifer( id, value, type ) );
+
+  } // Assign()
+};
+
+class Node {
+private:
+  string mId_;
+  int mType_;
+  float mValue_;
+  Node *mLeft_Node_;
+  Node *mRight_Node_;
+
+public:
+  Node() {
+    mId_ = "";
+    mType_ = 0;
+    mValue_ = 0;
+    mLeft_Node_ = NULL;
+    mRight_Node_ = NULL;
+
+  } // Node()
+  ~Node() {
+    delete mLeft_Node_;
+    delete mRight_Node_;
+
+  } // ~Node()
+
+};
+
+class Tree {
+private:
+
+  vector<Token> mTokens_;
+
+public:
+  Tree() {
+
+  } // Tree()
+
 };
 
 int main() {
   int test_number = 0;
-  char newline;
   Parser parser;
   vector<Token> tokens;
   bool quit = false;
@@ -469,9 +553,15 @@ int main() {
     cout << "> ";
     try {
       tokens = parser.Parse();
+
     } // try
     catch( string error_info ) {
       cout << error_info << endl;
+
     } // carch
   } while( !quit ); // TODO solve the problem of EOF
 } // main()
+
+// * string to float example
+// std::string num = "0.6";
+// double temp = ::atof(num.c_str());

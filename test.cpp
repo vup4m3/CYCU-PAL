@@ -1,4 +1,5 @@
 # include <iostream>
+# include <vector>
 # include <string>
 enum Type {
   IDENTIFIER,  
@@ -70,14 +71,9 @@ private:
 using namespace std;
 
 int main() {
-  char ch = '\0';
-  string str = "123";
-  int a = 0;
-  int b = 0;
-  if ( ++a == 0 && ++b == 1 || ++b == 1 )
-    cout << "true" << endl;
-  
-  cout << a << endl;
-  cout << b << endl;
-  
+  vector<int> vec = {1};
+  cout << vec.back();
+  vec.pop_back();
+  cout << vec.back() << endl;
+  vec.pop_back();
 }
