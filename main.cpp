@@ -41,10 +41,67 @@ enum {
   QUIT        // quit
 };
 
+class Identifer {
+public:
+  Identifer( string str ) {
+    name = str;
+    type = 0;
+    value = 0;
+  } // Identifer()
+  string name;
+  int type;
+  float value;
+
+};
+
+class IdTable {
+private:
+  vector<Identifer> mTable;
+  // * Debug
+  void IndexError_( int index ) {
+    if ( index >= mTable.size() )
+      throw string( "IdTable index Error !!" );
+  } // IndexError_()
+
+public:
+  int Get_Index( string name ) {
+    for ( int i = 0; i < mTable.size(); i++ ) {
+      if ( name == mTable[i].name ) {
+        return i;
+      } // if
+    } // for
+
+    mTable.push_back( Identifer( name ) );
+    return mTable.size()-1;
+  } // Get_Index()
+
+  float Value( int index ) {
+    IndexError_( index );
+    return mTable[index].value;
+  } // Value
+
+  int Value_Type( int index ) {
+    IndexError_( index );
+    return mTable[index].type;
+  } // Type
+
+  void Assign(int index, int type, float value ) {
+    IndexError_( index );
+    mTable[index].type = type;
+    mTable[index].value = value;
+  } // Assign
+
+};
+
 class Token {
 private:
-  string mName_;
   int mType_;
+  string mName_;
+  float mValue_; // if type is Identifer, here will store the index of it in Id Table
+  static IdTable mIdTable_;
+  float String_to_Float_( string str ) {
+
+  } // String_to_Float_()
 
 public:
   Token() {
@@ -52,22 +109,51 @@ public:
   } // Token()
 
   Token( string str, int type ) {
-    mName_ = str;
     mType_ = type;
+    mName_ = str;
+    if ( type == IDENTIFIER )
+      mValue_ = mIdTable_.Get_Index( str );
+    else if ( type == INTVALUE || type == FLOATVALUE ) {
+      mValue_ = String_to_Float_( str );
+    } // else if 
+    else mValue_ = 0;
   } // Token()
 
   void Reset() {
     mName_ = "";
     mType_ = NONE;
+    mValue_ = 0;
+
   } // Delete()
+
+  int Token_Type() {
+    return mType_;
+  } // Type()
+
+  int Value_Type() {
+    if ( mType_ == INTVALUE || mType_ == FLOATVALUE )
+      return mType_;
+    else 
+      return mIdTable_.Value_Type( mValue_ );
+  } // Value_Type()
 
   string Name() {
     return mName_;
   } // Name()
 
-  int Type() {
-    return mType_;
-  } // Type()
+  float Value() {
+    if ( mType_ == FLOATVALUE || mType_ == INTVALUE )
+      return mValue_;
+    else if ( mType_ == IDENTIFIER ) {
+      return mIdTable_.Value( mValue_ );
+    } // else if 
+    else 
+      throw string( "Error!! you should not ask for Value...." ); // * Only for debug
+  } // Value()
+  
+  void Assign( int type, float value ) {
+    mIdTable_.Assign( mValue_, type, value );
+  } // Assign
 
 };
 
@@ -158,7 +244,7 @@ public:
     int type, state = 0;
     bool stop = false, interupt = false;
     string token_name = "";
-    if ( mNext_Token_.Type() == NONE ) {
+    if ( mNext_Token_.Token_Type() == NONE ) {
       while ( !stop ) {
         if ( state == 0 ) {
           type = Input_Type_( Peek_Char_() );
@@ -263,17 +349,34 @@ private:
   vector<Token> mTokens_;
 
   // * If the Token match parameter, add it at the end of mTokens.
-  bool Push_If_Match_( int num ) {
-    if ( mScnr_.Peek_Token().Type() == num ) {
+  bool Push_If_Match_( int type ) {
+    if ( mScnr_.Peek_Token().Token_Type() == type ) {
       mTokens_.push_back( mScnr_.Get_Token() );
       return true;
     } // if
     else return false;
   } // Push_If_Match()
 
+  void Token_Push_Back_( Token token ) {
+    mTokens_.push_back( mScnr_.Get_Token() );
+  } // Token_Push_Back_()
+
   // * NUM
   bool Is_Num_() {
-    if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) )
+    // * Translate SIGN NUM to ( 0 SIGN NUM )
+    // * Ex. 1 - -1 >> 1 - ( 0 - 1 )
+    if ( mScnr_.Peek_Token().Token_Type() == PLUS ||  mScnr_.Peek_Token().Token_Type() == MINUS ) { 
+      Token_Push_Back_( Token( "(", LPAR ) );
+      Token_Push_Back_( Token( "0", INTVALUE ) );
+      if ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
+        if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) ) {
+          Token_Push_Back_( Token( ")", RPAR ) );
+        } // if
+        else Error_();
+      } // if
+
+    } // if
+    else if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) )
       return true;
     else return false;
 
@@ -455,93 +558,6 @@ public:
 
 };
 
-class Identifer {
-public:
-  Identifer( string name, float value, int type ) {
-    Name = name;
-    Value = value;
-    Type = type;
-  } // Identifer
-  string Name;
-  float Value;
-  int Type;
-
-};
-
-class IdTable {
-private:
-  vector<Identifer> mTable_;
-
-  void Error_( string id ) {
-      string msg = "Undefined identifier : '";
-      msg += id;
-      msg += "'";
-      throw msg;
-  } // mError()
-
-public:
-  Identifer Get_Value( string id ) {
-    for ( int i = 0; mTable_.size() != 0 && i < mTable_.size(); i++ ) {
-      if ( mTable_[i].Name == id )
-        return mTable_[i];
-    } // for
-
-    Error_( id ); // Can't find id
-  } // Get_Value()
-
-  void Assign( string id, float value, int type ) {
-    bool stop = false;
-    for ( int i = 0; mTable_.size() != 0 && i < mTable_.size() && !stop; i++ ) {
-      if ( id == mTable_[i].Name ) {
-        mTable_[i].Value = value;
-        mTable_[i].Type = type;
-        stop = true;
-      } // if
-    } // for
-
-    if ( !stop )
-      mTable_.push_back( Identifer( id, value, type ) );
-
-  } // Assign()
-};
-
-class Node {
-private:
-  string mId_;
-  int mType_;
-  float mValue_;
-  Node *mLeft_Node_;
-  Node *mRight_Node_;
-
-public:
-  Node() {
-    mId_ = "";
-    mType_ = 0;
-    mValue_ = 0;
-    mLeft_Node_ = NULL;
-    mRight_Node_ = NULL;
-
-  } // Node()
-  ~Node() {
-    delete mLeft_Node_;
-    delete mRight_Node_;
-
-  } // ~Node()
-
-};
-
-class Tree {
-private:
-
-  vector<Token> mTokens_;
-
-public:
-  Tree() {
-
-  } // Tree()
-
-};
-
 int main() {
   int test_number = 0;
   Parser parser;
@@ -561,7 +577,3 @@ int main() {
     } // carch
   } while( !quit ); // TODO solve the problem of EOF
 } // main()
-
-// * string to float example
-// std::string num = "0.6";
-// double temp = ::atof(num.c_str());
