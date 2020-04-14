@@ -371,6 +371,34 @@ private:
     else mChild_->Push_Token_Back( token );
   } // Call_Child_()
 
+  int Op_Stack_Pop_Back_() {
+    Token tmp = mOperater_stack_.back();
+    mOperater_stack_.pop_back();
+    return tmp.Token_Type();
+  } // Op_Stack_Pop_Back()
+
+  Token Val_Stack_Pop_Back_() {
+    Token tmp = mOperater_stack_.back();
+    mVariable_stack_.pop_back();
+    return tmp;
+  } // Val_Stack_Pop_Back_()
+
+  // * ( int op, Token arg1, Token arg2, Token arg3 )
+  void Make_Inter_Code_( Token token ) {
+    int op = Op_Stack_Pop_Back_();
+    Token a2 = Val_Stack_Pop_Back_();
+    Token a1 = Val_Stack_Pop_Back_();
+    if ( op == ASSIGN ) 
+      mInter_codes_.push_back( InterCode( op, Token( "None", 0 ), a2, a1 ) );
+    else {
+      Token temp = Token( TEMP, mTemp_Number_ );
+      mTemp_Number_++;
+      mInter_codes_.push_back( InterCode( op, a1, a2, temp ) );
+    } // else
+    if ( token.Token_Type() == SEMI && mVariable_stack_.size() != 0 )
+      Make_Inter_Code_( token );
+  } // mMake_Intercode
+
 public:
   Compiler() {
     Reset();
@@ -394,12 +422,12 @@ public:
   void Push_Token_Back( Token token ) {
     if ( !mSwitch_Control_ ) {
       if ( token.Token_Type() != LPAR ) { // (
-        // TODO Regular case
         if ( token.Token_Type() >= ASSIGN ) {
-          // TODO BuildInstruction
           if ( token.Token_Type() <= mOperater_stack_.back().Token_Type() ) {
-            // TODO build instruction
+            Make_Inter_Code_( token );
           } // if
+          if ( token.Token_Type() != SEMI )
+            mOperater_stack_.push_back( token );
         } // if
         else
           mVariable_stack_.push_back( token );
@@ -415,6 +443,11 @@ public:
 
   } // Push_Token_Back()
 
+  vector<InterCode> Get_InterCodes() {
+    vector<InterCode> temp = mInter_codes_;
+    Reset();
+    return temp;
+  } // Get_InterCodes()
 };
 
 // * Do Syntax Analysis
@@ -423,7 +456,7 @@ private:
   Scanner mScnr_;
   // * Store Tokens after parse
   vector<Token> mTokens_;
-  Compiler compiler;
+  Compiler mCompiler_;
 
   // * Syntactic Error (token recognized)
   void Error_() {
@@ -431,35 +464,29 @@ private:
     error += mScnr_.Get_Token().Name();
     error += "'";
     mScnr_.Reset();
-    compiler.Reset();
+    mCompiler_.Reset();
     throw error;
   } // Error()
 
   // * If the Token match parameter, add it at the end of mTokens.
   bool Push_If_Match_( int type ) {
     if ( mScnr_.Peek_Token().Token_Type() == type ) {
-      mTokens_.push_back( mScnr_.Get_Token() );
+      mCompiler_.Push_Token_Back( mScnr_.Get_Token() );
       return true;
     } // if
     else return false;
   } // Push_If_Match()
-
-  void Token_Push_Back_( Token token ) {
-    if ( token.Token_Type() >= ASSIGN ) {
-
-    } // if
-  } // Token_Push_Back_()
 
   // * NUM
   bool Is_Num_() {
     // * Translate SIGN NUM to ( 0 SIGN NUM )
     // * Ex. 1 - -1 >> 1 - ( 0 - 1 )
     if ( mScnr_.Peek_Token().Token_Type() == PLUS ||  mScnr_.Peek_Token().Token_Type() == MINUS ) {
-      Token_Push_Back_( Token( "(", LPAR ) );
-      Token_Push_Back_( Token( "0", INTVALUE ) );
+      mCompiler_.Push_Token_Back( Token( "(", LPAR ) );
+      mCompiler_.Push_Token_Back( Token( "0", INTVALUE ) );
       if ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
         if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) )
-          Token_Push_Back_( Token( ")", RPAR ) );
+          mCompiler_.Push_Token_Back( Token( ")", RPAR ) );
         else Error_();
       } // if
 
@@ -590,7 +617,7 @@ private:
   // * <Command> ::= IDENT ( ':=' <ArithExp> | <IDlessArithExpOrBexp> ) ';' | <NOT_IDStartArithExpOrBexp> ';' | QUIT
   bool Is_Command_() {
     if ( mScnr_.Peek_Token().Is_Quit() ) {
-      Token_Push_Back_( Token( "quit", QUIT ) );
+      mCompiler_.Push_Token_Back( Token( "quit", QUIT ) );
       mScnr_.Reset();
       return true;
     } // if
@@ -625,11 +652,9 @@ public:
     mScnr_ = Scanner();
   } // Parser()
 
-
-
-  vector<Token> Parse() {
+  vector<InterCode> Parse() {
     if ( Is_Command_() )
-      return mTokens_;
+      return mCompiler_.Get_InterCodes();
     else
       Error_();
 
@@ -640,14 +665,14 @@ public:
 int main() {
   int test_number = 0;
   Parser parser;
-  vector<Token> tokens;
+  vector<InterCode> inter_codes;
   bool quit = false;
   // cin >> test_number;
   cout << ">>Program starts..." << endl;
   do {
     cout << "> ";
     try {
-      tokens = parser.Parse();
+      inter_codes = parser.Parse();
 
     } // try
     catch( string error_info ) {
