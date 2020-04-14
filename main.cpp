@@ -44,14 +44,15 @@ enum {
 
 class Identifer {
 public:
+  string name;
+  int type;
+  float value;
+
   Identifer( string str ) {
     name = str;
     type = 0;
     value = 0;
   } // Identifer()
-  string name;
-  int type;
-  float value;
 
 };
 
@@ -100,8 +101,9 @@ private:
   int mType_;
   string mName_;
   float mValue_; // if type is Identifer, here will store the index of it in Id Table
-  float String_to_Float_( string str ) {
 
+  float String_to_Float_( string str ) {
+    return atof( str.c_str() );
   } // String_to_Float_()
 
 public:
@@ -403,12 +405,18 @@ private:
 
 public:
   Compiler() {
-    Reset();
-    
+    gInter_codes.clear();
+    mOperater_stack_.clear();
+    mOperater_stack_.push_back( Token( "$", NONE ) );
+    mVariable_stack_.clear();
+    mChild_ = NULL;
   } // Compiler()
 
   ~Compiler() {
-    delete mChild_;
+    if ( mChild_ != NULL ) {
+      delete mChild_;
+      mChild_ = NULL;
+    } // if
   } // Compilar()
 
   void Reset() {
@@ -417,8 +425,10 @@ public:
     mOperater_stack_.push_back( Token( "$", NONE ) );
     mVariable_stack_.clear();
     gTemp_Number = 0;
-    delete mChild_;
-    mChild_ = NULL;
+    if ( mChild_ != NULL ) {
+      delete mChild_;
+      mChild_ = NULL;
+    } // if
     mSwitch_Control_ = false;
   } // Reset()
 
@@ -661,7 +671,6 @@ public:
 int main() {
   int test_number = 0;
   Parser parser;
-  vector<InterCode> inter_codes;
   bool quit = false;
   // cin >> test_number;
   cout << ">>Program starts..." << endl;
