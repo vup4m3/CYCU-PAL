@@ -35,9 +35,10 @@ public:
 
 
 int main() {
-  string num = "45";
+  string num = "1.5";
   float temp = atof(num.c_str());
-  cout << temp << endl;
+  vector<int> vec = { 1, 2, 3, 1, 4 };
+  cout << vec[temp] << endl;
 }
 enum Type {
   IDENTIFIER,  

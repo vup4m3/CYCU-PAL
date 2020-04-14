@@ -18,6 +18,7 @@ enum {
   FLOATVALUE,
   // Type
   IDENTIFIER,
+  TEMP,
   // Op
   ASSIGN,        // :=
   EQ,           // =
@@ -66,13 +67,12 @@ private:
 public:
   int Get_Index( string name ) {
     for ( int i = 0; i < mTable.size(); i++ ) {
-      if ( name == mTable[i].name ) {
+      if ( name == mTable[i].name )
         return i;
-      } // if
     } // for
 
     mTable.push_back( Identifer( name ) );
-    return mTable.size()-1;
+    return mTable.size() - 1;
   } // Get_Index()
 
   float Value( int index ) {
@@ -113,10 +113,15 @@ public:
     mName_ = str;
     if ( type == IDENTIFIER )
       mValue_ = mIdTable_.Get_Index( str );
-    else if ( type == INTVALUE || type == FLOATVALUE ) {
+    else if ( type == INTVALUE || type == FLOATVALUE )
       mValue_ = String_to_Float_( str );
-    } // else if 
     else mValue_ = 0;
+  } // Token()
+
+  Token( int type, float index ) {
+    mType_ = type;
+    mName_ = "temp";
+    mValue_ = index;
   } // Token()
 
   void Reset() {
@@ -133,7 +138,7 @@ public:
   int Value_Type() {
     if ( mType_ == INTVALUE || mType_ == FLOATVALUE )
       return mType_;
-    else 
+    else
       return mIdTable_.Value_Type( mValue_ );
   } // Value_Type()
 
@@ -146,14 +151,18 @@ public:
       return mValue_;
     else if ( mType_ == IDENTIFIER ) {
       return mIdTable_.Value( mValue_ );
-    } // else if 
-    else 
+    } // else if
+    else
       throw string( "Error!! you should not ask for Value...." ); // * Only for debug
   } // Value()
-  
+
   void Assign( int type, float value ) {
     mIdTable_.Assign( mValue_, type, value );
   } // Assign
+
+  bool Is_Quit() {
+    return mName_ == "quit";
+  } // Is_Quit()
 
 };
 
@@ -215,18 +224,8 @@ private:
   } // One_Char_Token()
 
   bool Is_One_Char_Token_Type_( int type ) {
-    if ( type == LPAR || type == RPAR || type == PLUS || type == MINUS || type == STAR || type == SEMI )
-      return true;
-    else return false;
+    return type == LPAR || type == RPAR || type == PLUS || type == MINUS || type == STAR || type == SEMI;
   } // Is_One_Char_Token_Type_()
-
-  int Reserved_Word_( string str ) {
-    /*if ( str == "quit" )
-      return QUIT;
-      else
-    */
-    return IDENTIFIER;
-  } // Reserved_Word_()
 
 public:
   Scanner() {
@@ -318,8 +317,6 @@ public:
             Reset();
             throw error_msg;
           } // if()
-          else if ( state == IDENTIFIER )
-            mNext_Token_ = Token( token_name, Reserved_Word_( token_name ) );
           else
             mNext_Token_ = Token( token_name, state );
           stop = true;
@@ -341,12 +338,102 @@ public:
 
 };
 
-class Parser {
+// * Intermediate code
+class InterCode {
+public:
+  int operater;
+  Token arg1, arg2, arg3;
+  InterCode( int op, Token a1, Token a2, Token a3 ) {
+    operater = op;
+    arg1 = a1;
+    arg2 = a2;
+    arg3 = a3;
+  } // InterCode()
+
+};
+
+class Compiler {
+private:
+  static vector<InterCode> mInter_codes_;
+  vector<Token> mOperater_stack_;
+  vector<Token> mVariable_stack_;
+  int mTemp_Number_;
+  Compiler *mChild_;
+  bool mSwitch_Control_;
+
+  void Call_Child_( Token token) {
+    if ( token.Token_Type() == RPAR ) {
+      mSwitch_Control_ = false;
+      mChild_->Push_Token_Back( Token( ";", SEMI ) );
+      delete mChild_;
+      mChild_ = NULL;
+    } // if
+    else mChild_->Push_Token_Back( token );
+  } // Call_Child_()
+
+public:
+  Compiler() {
+    Reset();
+  } // Compiler()
+
+  ~Compiler() {
+    delete mChild_;
+  } // Compilar()
+
+  void Reset() {
+    mInter_codes_.clear();
+    mOperater_stack_.clear();
+    mOperater_stack_.push_back( Token( "$", NONE ) );
+    mVariable_stack_.clear();
+    mTemp_Number_ = 0;
+    delete mChild_;
+    mChild_ = NULL;
+    mSwitch_Control_ = false;
+  } // Reset()
+
+  void Push_Token_Back( Token token ) {
+    if ( !mSwitch_Control_ ) {
+      if ( token.Token_Type() != LPAR ) { // (
+        // TODO Regular case
+        if ( token.Token_Type() >= ASSIGN ) {
+          // TODO BuildInstruction
+          if ( token.Token_Type() <= mOperater_stack_.back().Token_Type() ) {
+            // TODO build instruction
+          } // if
+        } // if
+        else
+          mVariable_stack_.push_back( token );
+
+      } // if
+      else { // * meet '('
+        mSwitch_Control_ = true;
+        mChild_ = new Compiler();
+      } // else
+
+    } // if
+    else Call_Child_(token);
+
+  } // Push_Token_Back()
+
+};
+
 // * Do Syntax Analysis
+class Parser {
 private:
   Scanner mScnr_;
   // * Store Tokens after parse
   vector<Token> mTokens_;
+  Compiler compiler;
+
+  // * Syntactic Error (token recognized)
+  void Error_() {
+    string error = "Unexpected token : '";
+    error += mScnr_.Get_Token().Name();
+    error += "'";
+    mScnr_.Reset();
+    compiler.Reset();
+    throw error;
+  } // Error()
 
   // * If the Token match parameter, add it at the end of mTokens.
   bool Push_If_Match_( int type ) {
@@ -358,35 +445,31 @@ private:
   } // Push_If_Match()
 
   void Token_Push_Back_( Token token ) {
-    mTokens_.push_back( mScnr_.Get_Token() );
+    if ( token.Token_Type() >= ASSIGN ) {
+
+    } // if
   } // Token_Push_Back_()
 
   // * NUM
   bool Is_Num_() {
     // * Translate SIGN NUM to ( 0 SIGN NUM )
     // * Ex. 1 - -1 >> 1 - ( 0 - 1 )
-    if ( mScnr_.Peek_Token().Token_Type() == PLUS ||  mScnr_.Peek_Token().Token_Type() == MINUS ) { 
+    if ( mScnr_.Peek_Token().Token_Type() == PLUS ||  mScnr_.Peek_Token().Token_Type() == MINUS ) {
       Token_Push_Back_( Token( "(", LPAR ) );
       Token_Push_Back_( Token( "0", INTVALUE ) );
       if ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
-        if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) ) {
+        if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) )
           Token_Push_Back_( Token( ")", RPAR ) );
-        } // if
         else Error_();
       } // if
 
     } // if
-    else if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) )
-      return true;
-    else return false;
-
+    else return ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) );
   } // Is_Num_()
 
   // * - or +
   bool Is_Sign_() {
-    if ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) )
-      return true;
-    else return false;
+    return Push_If_Match_( PLUS ) || Push_If_Match_( MINUS );
   } // Is_Sign()
 
   // * [SIGN] NUM | IDENT | '(' <Arith Exp> ')'
@@ -405,7 +488,6 @@ private:
         } // if ()
         else {
           Error_(); // * With out LPAR
-          return false;
         } // else
       } // if
     } // else
@@ -507,6 +589,11 @@ private:
 
   // * <Command> ::= IDENT ( ':=' <ArithExp> | <IDlessArithExpOrBexp> ) ';' | <NOT_IDStartArithExpOrBexp> ';' | QUIT
   bool Is_Command_() {
+    if ( mScnr_.Peek_Token().Is_Quit() ) {
+      Token_Push_Back_( Token( "quit", QUIT ) );
+      mScnr_.Reset();
+      return true;
+    } // if
     if ( Push_If_Match_( IDENTIFIER ) ) { // IDENT
       if ( Push_If_Match_( ASSIGN ) ) { // :=
         if ( Is_Arith_Exp_() ) {
@@ -538,15 +625,7 @@ public:
     mScnr_ = Scanner();
   } // Parser()
 
-  // * Syntactic Error (token recognized)
-  void Error_() {
-    string error = "Unexpected token : '";
-    error += mScnr_.Get_Token().Name();
-    error += "'";
-    mScnr_.Reset();
-    mTokens_.clear();
-    throw error;
-  } // Error()
+
 
   vector<Token> Parse() {
     if ( Is_Command_() )
