@@ -57,48 +57,49 @@ public:
 
 class IdTable {
 private:
-  vector<Identifer> mTable;
   // * Debug
+  vector<Identifer> mId_Table_;
   void IndexError_( int index ) {
-    if ( index >= mTable.size() )
+    if ( index >= mId_Table_.size() )
       throw string( "IdTable index Error !!" );
   } // IndexError_()
 
 public:
   int Get_Index( string name ) {
-    for ( int i = 0; i < mTable.size(); i++ ) {
-      if ( name == mTable[i].name )
+    for ( int i = 0; i < mId_Table_.size(); i++ ) {
+      if ( name == mId_Table_[i].name )
         return i;
     } // for
 
-    mTable.push_back( Identifer( name ) );
-    return mTable.size() - 1;
+    mId_Table_.push_back( Identifer( name ) );
+    return mId_Table_.size() - 1;
   } // Get_Index()
 
   float Value( int index ) {
     IndexError_( index );
-    return mTable[index].value;
+    return mId_Table_[index].value;
   } // Value
 
   int Value_Type( int index ) {
     IndexError_( index );
-    return mTable[index].type;
+    return mId_Table_[index].type;
   } // Type
 
   void Assign(int index, int type, float value ) {
     IndexError_( index );
-    mTable[index].type = type;
-    mTable[index].value = value;
+    mId_Table_[index].type = type;
+    mId_Table_[index].value = value;
   } // Assign
 
 };
+
+IdTable gIdTable;
 
 class Token {
 private:
   int mType_;
   string mName_;
   float mValue_; // if type is Identifer, here will store the index of it in Id Table
-  static IdTable mIdTable_;
   float String_to_Float_( string str ) {
 
   } // String_to_Float_()
@@ -112,7 +113,7 @@ public:
     mType_ = type;
     mName_ = str;
     if ( type == IDENTIFIER )
-      mValue_ = mIdTable_.Get_Index( str );
+      mValue_ = gIdTable.Get_Index( str );
     else if ( type == INTVALUE || type == FLOATVALUE )
       mValue_ = String_to_Float_( str );
     else mValue_ = 0;
@@ -139,7 +140,7 @@ public:
     if ( mType_ == INTVALUE || mType_ == FLOATVALUE )
       return mType_;
     else
-      return mIdTable_.Value_Type( mValue_ );
+      return gIdTable.Value_Type( mValue_ );
   } // Value_Type()
 
   string Name() {
@@ -150,14 +151,14 @@ public:
     if ( mType_ == FLOATVALUE || mType_ == INTVALUE )
       return mValue_;
     else if ( mType_ == IDENTIFIER ) {
-      return mIdTable_.Value( mValue_ );
+      return gIdTable.Value( mValue_ );
     } // else if
     else
       throw string( "Error!! you should not ask for Value...." ); // * Only for debug
   } // Value()
 
   void Assign( int type, float value ) {
-    mIdTable_.Assign( mValue_, type, value );
+    gIdTable.Assign( mValue_, type, value );
   } // Assign
 
   bool Is_Quit() {
@@ -352,12 +353,13 @@ public:
 
 };
 
+vector<InterCode> gInter_codes;
+int gTemp_Number;
+
 class Compiler {
 private:
-  static vector<InterCode> mInter_codes_;
   vector<Token> mOperater_stack_;
   vector<Token> mVariable_stack_;
-  int mTemp_Number_;
   Compiler *mChild_;
   bool mSwitch_Control_;
 
@@ -389,11 +391,11 @@ private:
     Token a2 = Val_Stack_Pop_Back_();
     Token a1 = Val_Stack_Pop_Back_();
     if ( op == ASSIGN ) 
-      mInter_codes_.push_back( InterCode( op, Token( "None", 0 ), a2, a1 ) );
+      gInter_codes.push_back( InterCode( op, Token( "None", 0 ), a2, a1 ) );
     else {
-      Token temp = Token( TEMP, mTemp_Number_ );
-      mTemp_Number_++;
-      mInter_codes_.push_back( InterCode( op, a1, a2, temp ) );
+      Token temp = Token( TEMP, gTemp_Number );
+      gTemp_Number++;
+      gInter_codes.push_back( InterCode( op, a1, a2, temp ) );
     } // else
     if ( token.Token_Type() == SEMI && mVariable_stack_.size() != 0 )
       Make_Inter_Code_( token );
@@ -402,6 +404,7 @@ private:
 public:
   Compiler() {
     Reset();
+    
   } // Compiler()
 
   ~Compiler() {
@@ -409,11 +412,11 @@ public:
   } // Compilar()
 
   void Reset() {
-    mInter_codes_.clear();
+    gInter_codes.clear();
     mOperater_stack_.clear();
     mOperater_stack_.push_back( Token( "$", NONE ) );
     mVariable_stack_.clear();
-    mTemp_Number_ = 0;
+    gTemp_Number = 0;
     delete mChild_;
     mChild_ = NULL;
     mSwitch_Control_ = false;
@@ -443,11 +446,6 @@ public:
 
   } // Push_Token_Back()
 
-  vector<InterCode> Get_InterCodes() {
-    vector<InterCode> temp = mInter_codes_;
-    Reset();
-    return temp;
-  } // Get_InterCodes()
 };
 
 // * Do Syntax Analysis
@@ -652,10 +650,8 @@ public:
     mScnr_ = Scanner();
   } // Parser()
 
-  vector<InterCode> Parse() {
-    if ( Is_Command_() )
-      return mCompiler_.Get_InterCodes();
-    else
+  void Parse() {
+    if ( !Is_Command_() )
       Error_();
 
   } // Parse()
@@ -672,7 +668,7 @@ int main() {
   do {
     cout << "> ";
     try {
-      inter_codes = parser.Parse();
+      parser.Parse();
 
     } // try
     catch( string error_info ) {
