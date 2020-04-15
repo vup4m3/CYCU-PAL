@@ -649,8 +649,6 @@ private:
       else
         Error_();
     } // if
-    else if ( Push_If_Match_( QUIT ) )
-      return true;
     else
       Error_();
   } // Is_Command_()
@@ -666,6 +664,18 @@ public:
 
   } // Parse()
 
+};
+
+class Runner {
+private:
+  int mLine;
+
+public:
+
+Runner 
+void Eval() {
+  if (  )
+}
 };
 
 int main() {
