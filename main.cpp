@@ -16,6 +16,7 @@ enum {
   // Value
   INTVALUE,
   FLOATVALUE,
+  UNDEFINE,
   // Type
   IDENTIFIER,
   TEMP,
@@ -50,55 +51,40 @@ public:
 
   Identifer( string str ) {
     name = str;
-    type = 0;
+    type = UNDEFINE;
     value = 0;
   } // Identifer()
 
+  void Assign( int id_type, float id_value ) {
+    type = id_type;
+    value = id_value;
+  } // Assign()
+
 };
 
-class IdTable {
-private:
-  // * Debug
-  vector<Identifer> mId_Table_;
-  void IndexError_( int index ) {
-    if ( index >= mId_Table_.size() )
-      throw string( "IdTable index Error !!" );
-  } // IndexError_()
-
+class Temp {
 public:
-  int Get_Index( string name ) {
-    for ( int i = 0; i < mId_Table_.size(); i++ ) {
-      if ( name == mId_Table_[i].name )
-        return i;
-    } // for
+  int type;
+  float value;
 
-    mId_Table_.push_back( Identifer( name ) );
-    return mId_Table_.size() - 1;
-  } // Get_Index()
+  Temp() {
+    type = UNDEFINE;
+    value = 0;
+  } // Temp()
 
-  float Value( int index ) {
-    IndexError_( index );
-    return mId_Table_[index].value;
-  } // Value
-
-  int Value_Type( int index ) {
-    IndexError_( index );
-    return mId_Table_[index].type;
-  } // Type
-
-  void Assign(int index, int type, float value ) {
-    IndexError_( index );
-    mId_Table_[index].type = type;
-    mId_Table_[index].value = value;
-  } // Assign
+  void Assign( int temp_type, float temp_value ) {
+    type = temp_type;
+    value = temp_value;
+  } // Assign()
 
 };
 
-IdTable gIdTable;
+vector<Identifer> gIdTable;
+vector<Temp> gTempTable;
 
 class Token {
 private:
-  int mType_;
+  int mToken_Type_;
   string mName_;
   float mValue_; // if type is Identifer, here will store the index of it in Id Table
 
@@ -106,43 +92,62 @@ private:
     return atof( str.c_str() );
   } // String_to_Float_()
 
+  int Get_Id_Address( string str, int i ) {
+    if ( i == gIdTable.size() )
+      gIdTable.push_back( Identifer( str ) );
+    else if ( gIdTable[i].name == str )
+      return i;
+    else return Get_Id_Address( str, i+1 );
+  } // Get_Id_Address()
+
 public:
   Token() {
     Reset();
   } // Token()
 
+  Token() {
+    mToken_Type_ = NONE;
+    mName_ = "None";
+    mValue_ = 0;
+  } // Token()
+
   Token( string str, int type ) {
-    mType_ = type;
+    mToken_Type_ = type;
     mName_ = str;
     if ( type == IDENTIFIER )
-      mValue_ = gIdTable.Get_Index( str );
+      mValue_ = Get_Id_Address( str, 0 );
     else if ( type == INTVALUE || type == FLOATVALUE )
       mValue_ = String_to_Float_( str );
     else mValue_ = 0;
   } // Token()
 
   Token( int type, float index ) {
-    mType_ = type;
-    mName_ = "temp";
-    mValue_ = index;
+    if ( type == TEMP ) {
+      mToken_Type_ = TEMP;
+      mValue_ = index;
+      gTempTable.push_back( Temp() );
+    } // if
+    
   } // Token()
 
   void Reset() {
     mName_ = "";
-    mType_ = NONE;
+    mToken_Type_ = NONE;
     mValue_ = 0;
 
   } // Delete()
 
   int Token_Type() {
-    return mType_;
+    return mToken_Type_;
   } // Type()
 
   int Value_Type() {
-    if ( mType_ == INTVALUE || mType_ == FLOATVALUE )
-      return mType_;
+    if ( mToken_Type_ == IDENTIFIER )
+      return gIdTable[mValue_].type;
+    else if ( mToken_Type_ == TEMP )
+      return gTempTable[mValue_].type;
     else
-      return gIdTable.Value_Type( mValue_ );
+      return mToken_Type_;
   } // Value_Type()
 
   string Name() {
@@ -150,17 +155,21 @@ public:
   } // Name()
 
   float Value() {
-    if ( mType_ == FLOATVALUE || mType_ == INTVALUE )
-      return mValue_;
-    else if ( mType_ == IDENTIFIER ) {
-      return gIdTable.Value( mValue_ );
+    if ( mToken_Type_ == IDENTIFIER ) {
+      return gIdTable[mValue_].value;
     } // else if
-    else
-      throw string( "Error!! you should not ask for Value...." ); // * Only for debug
+    else if ( mToken_Type_ == TEMP ) {
+      return gTempTable[mValue_].value;
+    } // else if
+    else return mValue_;
   } // Value()
 
-  void Assign( int type, float value ) {
-    gIdTable.Assign( mValue_, type, value );
+  void Assign( int value_type, float value ) {
+
+    if ( mToken_Type_ == IDENTIFIER )
+      gIdTable[mValue_].Assign( value_type, value );
+    else 
+      gTempTable[mValue_].Assign( value_type, value );
   } // Assign
 
   bool Is_Quit() {
@@ -376,15 +385,23 @@ private:
   } // Call_Child_()
 
   int Op_Stack_Pop_Back_() {
-    Token tmp = mOperater_stack_.back();
-    mOperater_stack_.pop_back();
-    return tmp.Token_Type();
+    if ( mOperater_stack_.empty() )
+      return NONE;
+    else {
+      Token tmp = mOperater_stack_.back();
+      mOperater_stack_.pop_back();
+      return tmp.Token_Type();
+    } // else
   } // Op_Stack_Pop_Back()
 
   Token Val_Stack_Pop_Back_() {
-    Token tmp = mOperater_stack_.back();
-    mVariable_stack_.pop_back();
-    return tmp;
+    if ( mVariable_stack_.empty() )
+      return Token();
+    else {
+      Token tmp = mOperater_stack_.back();
+      mVariable_stack_.pop_back();
+      return tmp;
+    } // else
   } // Val_Stack_Pop_Back_()
 
   // * ( int op, Token arg1, Token arg2, Token arg3 )
@@ -392,8 +409,15 @@ private:
     int op = Op_Stack_Pop_Back_();
     Token a2 = Val_Stack_Pop_Back_();
     Token a1 = Val_Stack_Pop_Back_();
-    if ( op == ASSIGN ) 
-      gInter_codes.push_back( InterCode( op, Token( "None", 0 ), a2, a1 ) );
+    Token none;
+    if ( op == ASSIGN )
+      gInter_codes.push_back( InterCode( op, none, a2, a1 ) );
+    else if ( op == QUIT ) {
+      gInter_codes.push_back( InterCode( op, none, none, none) );
+    } // else if
+    else if ( op == NONE ) {
+      gInter_codes.push_back( InterCode( NONE, none, none, a2 ) );
+    } // else if
     else {
       Token temp = Token( TEMP, gTemp_Number );
       gTemp_Number++;
@@ -668,20 +692,30 @@ public:
 
 class Runner {
 private:
-  int mLine;
+  float Eval( InterCode inter_code ) {
+    if ( inter_code.operater == QUIT ) {
+      quit = true;
+      return 0;
+    } // if
+    else if ( inter_code.operater == PLUS ) {
+      
+    } // else if
+  } // Eval()
+
+  
 
 public:
+  bool quit;
+  Runner() {
+    quit = false;
+  } // Runner()
 
-Runner 
-void Eval() {
-  if (  )
-}
 };
 
 int main() {
   int test_number = 0;
   Parser parser;
-  bool quit = false;
+  Runner runner;
   // cin >> test_number;
   cout << ">>Program starts..." << endl;
   do {
@@ -694,5 +728,5 @@ int main() {
       cout << error_info << endl;
 
     } // carch
-  } while( !quit ); // TODO solve the problem of EOF
+  } while( !runner.quit ); // TODO solve the problem of EOF
 } // main()
