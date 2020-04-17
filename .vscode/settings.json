@@ -1,3 +1,15 @@
 {
-    "editor.fontFamily": "'Consolas', 'Droid Sans Mono', 'monospace', monospace, 'Droid Sans Fallback'"
+    "editor.fontFamily": "'Consolas', 'Droid Sans Mono', 'monospace', monospace, 'Droid Sans Fallback'",
+    "files.associations": {
+        "array": "cpp",
+        "chrono": "cpp",
+        "functional": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "ratio": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "variant": "cpp"
+    }
 }

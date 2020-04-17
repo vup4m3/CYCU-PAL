@@ -13,11 +13,12 @@ enum {
   NONE,
   OTHER,
   PL_EOF,
-  // Value
+  // Value Type
   INTVALUE,
   FLOATVALUE,
+  BOOLVALUE,
   UNDEFINE,
-  // Type
+  // Token Type
   IDENTIFIER,
   TEMP,
   // Op
@@ -51,7 +52,12 @@ public:
   Variable() {
     var_type = UNDEFINE;
     var_value = 0;
-  } // Value
+  } // VaRiable()
+
+  Variable( int type, float value ) {
+    var_type = type;
+    var_value = value;
+  } // Variable()
 
   void Assign( int type, float value ) {
     var_type = type;
@@ -170,7 +176,22 @@ public:
       gIdTable[mValue_].Assign( value_type, value );
     else 
       gTempTable[mValue_].Assign( value_type, value );
-  } // Assign
+  } // Assign()
+
+  int Priority() {
+    if ( mToken_Type_ == ASSIGN )
+      return 0;
+    else if ( EQ <= mToken_Type_ && mToken_Type_ <= GE )
+      return 1;
+    else if ( PLUS <= mToken_Type_ && mToken_Type_ <= MINUS )
+      return 2;
+    else if ( STAR <= mToken_Type_ && mToken_Type_ <= SLASH )
+      return 3;
+    else if ( LPAR <= mToken_Type_ && mToken_Type_ <= RPAR )
+      return 4;
+    else if ( mToken_Type_ == SEMI ) 
+      return 5;
+  } // Priority()
 
   bool Is_Quit() {
     return mName_ == "quit";
@@ -350,7 +371,7 @@ public:
 
 };
 
-// * Intermediate code
+// * Intermediate code ( op, a1, a2, a3 )
 class InterCode {
 public:
   int operater;
@@ -460,7 +481,7 @@ public:
     if ( !mSwitch_Control_ ) {
       if ( token.Token_Type() != LPAR ) { // (
         if ( token.Token_Type() >= ASSIGN ) {
-          if ( token.Token_Type() <= mOperater_stack_.back().Token_Type() ) {
+          if ( token.Priority() <= mOperater_stack_.back().Priority() ) {
             Make_Inter_Code_( token );
           } // if
           if ( token.Token_Type() != SEMI )
@@ -692,17 +713,79 @@ public:
 
 class Runner {
 private:
-  Variable Eval( InterCode inter_code ) {
-    if ( inter_code.operater == QUIT ) {
+  Variable Eval_( InterCode inter_code ) {
+    int op = inter_code.operater;
+    Token a1 = inter_code.arg1;
+    Token a2 = inter_code.arg2;
+    Token a3 = inter_code.arg3;
+    int type = NONE;
+    float value = 0;
+    if ( op == QUIT ) {
       quit = true;
-      return Variable();
     } // if
-    else if ( inter_code.operater == PLUS ) {
-      
+    else if ( op == ASSIGN ) {
+      type = Get_Type_( a2 );
+      value = a2.Value();
+      a3.Assign( type, value );
     } // else if
+    else if ( EQ <= op && op <= GE ) {
+      type = BOOLVALUE;
+      value = Bool_Value_( op, a1.Value(), a2.Value() );
+      a3.Assign( type, value );
+    } // else if 
+    else if ( PLUS <= op && op <= SLASH ) {
+      type = Get_Type_( a1, a2 );
+      value = Arith_Value_( op, a1.Value(), a2.Value() );
+      a3.Assign( type, value );
+    } // else if
+    return Variable( type, value );
   } // Eval()
-
   
+  float Arith_Value_( int op, float v1, float v2 ) {
+    if ( op == PLUS )
+      return v1 + v2;
+    else if ( op == MINUS )
+      return v1 - v2;
+    else if ( op == STAR )
+      return v1 * v2;
+    else {
+      if ( v2 == 0 ) 
+        throw "Error";
+      else return v1 / v2;
+    } // else
+  } // Arith_Value_()
+
+  float Bool_Value_( int op, float v1, float v2 ) {
+    if ( op == EQ && v1 == v2 || op == NEQ && v1 != v2 || op == LESS && v1 < v2 || op == GREATER && v1 > v2 || 
+      op == LE && v1 <= v2 || op == GE && v1 >= v2 )
+      return 1;
+    else return 0;
+  } // Bool_Value_()
+
+  int Get_Type_( Token token ) {
+    if ( token.Variable_Type() == UNDEFINE ) {
+      string error = "Undefined identifier : '";
+      error += token.Name();
+      error += "'";
+      throw error;
+    } // if
+    else return token.Variable_Type;
+  } // Get_Type_()
+
+  int Get_Type_( Token t1, Token t2 ) {
+    if ( t1.Variable_Type() == UNDEFINE || t2.Variable_Type() == UNDEFINE ) {
+      string error = "Undefined identifier : '";
+      if ( t1.Variable_Type() == UNDEFINE )
+        error += t1.Name();
+      else 
+        error += t2.Name();
+      error += "'";
+      throw error;
+    } // if 
+    else if ( t1.Variable_Type() == FLOATVALUE || t2.Variable_Type() == FLOATVALUE )
+      return FLOATVALUE;
+    else return INTVALUE;
+  } // Get_Type_()
 
 public:
   bool quit;
