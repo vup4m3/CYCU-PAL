@@ -43,44 +43,43 @@ enum {
   QUIT        // quit
 };
 
-class Identifer {
+class Variable {
 public:
-  string name;
-  int type;
-  float value;
+  int var_type;
+  float var_value;
 
-  Identifer( string str ) {
-    name = str;
-    type = UNDEFINE;
-    value = 0;
-  } // Identifer()
+  Variable() {
+    var_type = UNDEFINE;
+    var_value = 0;
+  } // Value
 
-  void Assign( int id_type, float id_value ) {
-    type = id_type;
-    value = id_value;
+  void Assign( int type, float value ) {
+    var_type = type;
+    var_value = value;
   } // Assign()
 
 };
 
-class Temp {
+class Identifer {
 public:
-  int type;
-  float value;
+  string name;
+  Variable var;
 
-  Temp() {
-    type = UNDEFINE;
-    value = 0;
-  } // Temp()
+  Identifer( string str ) {
+    name = str;
+    var = Variable();
+    
+  } // Identifer()
 
-  void Assign( int temp_type, float temp_value ) {
-    type = temp_type;
-    value = temp_value;
+  void Assign( int id_type, float id_value ) {
+    var.Assign( id_type, id_value );
+    
   } // Assign()
 
 };
 
 vector<Identifer> gIdTable;
-vector<Temp> gTempTable;
+vector<Variable> gTempTable;
 
 class Token {
 private:
@@ -92,6 +91,7 @@ private:
     return atof( str.c_str() );
   } // String_to_Float_()
 
+  // * Search ID's address in ID Table
   int Get_Id_Address( string str, int i ) {
     if ( i == gIdTable.size() )
       gIdTable.push_back( Identifer( str ) );
@@ -125,7 +125,7 @@ public:
     if ( type == TEMP ) {
       mToken_Type_ = TEMP;
       mValue_ = index;
-      gTempTable.push_back( Temp() );
+      gTempTable.push_back( Variable() );
     } // if
     
   } // Token()
@@ -141,11 +141,11 @@ public:
     return mToken_Type_;
   } // Type()
 
-  int Value_Type() {
+  int Variable_Type() {
     if ( mToken_Type_ == IDENTIFIER )
-      return gIdTable[mValue_].type;
+      return gIdTable[mValue_].var.var_type;
     else if ( mToken_Type_ == TEMP )
-      return gTempTable[mValue_].type;
+      return gTempTable[mValue_].var_type;
     else
       return mToken_Type_;
   } // Value_Type()
@@ -156,10 +156,10 @@ public:
 
   float Value() {
     if ( mToken_Type_ == IDENTIFIER ) {
-      return gIdTable[mValue_].value;
+      return gIdTable[mValue_].var.var_value;
     } // else if
     else if ( mToken_Type_ == TEMP ) {
-      return gTempTable[mValue_].value;
+      return gTempTable[mValue_].var_value;
     } // else if
     else return mValue_;
   } // Value()
@@ -692,10 +692,10 @@ public:
 
 class Runner {
 private:
-  float Eval( InterCode inter_code ) {
+  Variable Eval( InterCode inter_code ) {
     if ( inter_code.operater == QUIT ) {
       quit = true;
-      return 0;
+      return Variable();
     } // if
     else if ( inter_code.operater == PLUS ) {
       
