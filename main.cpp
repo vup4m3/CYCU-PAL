@@ -1,6 +1,7 @@
 # include <string>
 # include <vector>
 # include <iostream>
+# include <iomanip>
 
 using namespace std;
 
@@ -10,38 +11,39 @@ enum {
   BLANK,
   TAB,
   NEWLINE,
-  NONE,
+  NONE, // 229
   OTHER,
   PL_EOF,
   // Value Type
-  INTVALUE,
-  FLOATVALUE,
-  BOOLVALUE,
-  UNDEFINE,
+  INTVALUE, // 232
+  FLOATVALUE, // 233
+  BOOLVALUE, // 234
+  UNDEFINE, // 235
   // Token Type
-  IDENTIFIER,
-  TEMP,
+  IDENTIFIER, // 236
+  TEMP, // 237
   // Op
-  ASSIGN,        // :=
+  ASSIGN,        // := 238
   EQ,           // =
   NEQ,          // <>
   LESS,         // <
   GREATER,      // >
   LE,           // <=
   GE,           // >=
-  PLUS,         // +
-  MINUS,        // -
-  STAR,         // *
-  SLASH,        // /
+  PLUS,         // + 245
+  MINUS,        // - 246
+  STAR,         // * 247
+  SLASH,        // / 248
   LPAR,         // (
   RPAR,         // )
-  SEMI,         // ;
+  SEMI,         // ; 251
   // None mean
+  PESO,         // $
   COLON,        // :
   DOT,          // '.'
   COMMA,        // ,
   // Reserved Word
-  QUIT        // quit
+  QUIT        // quit 255
 };
 
 class Variable {
@@ -99,8 +101,10 @@ private:
 
   // * Search ID's address in ID Table
   int Get_Id_Address( string str, int i ) {
-    if ( i == gIdTable.size() )
+    if ( i == gIdTable.size() ) {
       gIdTable.push_back( Identifer( str ) );
+      return i;
+    } // Get_Id_Address()
     else if ( gIdTable[i].name == str )
       return i;
     else return Get_Id_Address( str, i+1 );
@@ -108,16 +112,13 @@ private:
 
 public:
   Token() {
-    Reset();
-  } // Token()
-
-  Token() {
     mToken_Type_ = NONE;
     mName_ = "None";
     mValue_ = 0;
   } // Token()
 
   Token( string str, int type ) {
+    mValue_ = 0;
     mToken_Type_ = type;
     mName_ = str;
     if ( type == IDENTIFIER )
@@ -179,18 +180,16 @@ public:
   } // Assign()
 
   int Priority() {
-    if ( mToken_Type_ == ASSIGN )
-      return 0;
-    else if ( EQ <= mToken_Type_ && mToken_Type_ <= GE )
-      return 1;
-    else if ( PLUS <= mToken_Type_ && mToken_Type_ <= MINUS )
-      return 2;
-    else if ( STAR <= mToken_Type_ && mToken_Type_ <= SLASH )
-      return 3;
+    if ( EQ <= mToken_Type_ && mToken_Type_ <= GE )
+      return EQ;
+    else if ( mToken_Type_ == MINUS )
+      return PLUS;
+    else if ( mToken_Type_ == SLASH )
+      return STAR;
     else if ( LPAR <= mToken_Type_ && mToken_Type_ <= RPAR )
-      return 4;
-    else if ( mToken_Type_ == SEMI ) 
-      return 5;
+      return LPAR;
+    else
+      return mToken_Type_;
   } // Priority()
 
   bool Is_Quit() {
@@ -398,7 +397,8 @@ private:
   void Call_Child_( Token token) {
     if ( token.Token_Type() == RPAR ) {
       mSwitch_Control_ = false;
-      mChild_->Push_Token_Back( Token( ";", SEMI ) );
+      mChild_->Push_Token_Back( Token( "$", PESO ) );
+      mVariable_stack_.push_back( mChild_->mVariable_stack_.front() );
       delete mChild_;
       mChild_ = NULL;
     } // if
@@ -419,40 +419,40 @@ private:
     if ( mVariable_stack_.empty() )
       return Token();
     else {
-      Token tmp = mOperater_stack_.back();
+      Token tmp = mVariable_stack_.back();
       mVariable_stack_.pop_back();
       return tmp;
     } // else
   } // Val_Stack_Pop_Back_()
 
   // * ( int op, Token arg1, Token arg2, Token arg3 )
-  void Make_Inter_Code_( Token token ) {
+  void Make_Inter_Code_( int type ) {
     int op = Op_Stack_Pop_Back_();
     Token a2 = Val_Stack_Pop_Back_();
     Token a1 = Val_Stack_Pop_Back_();
-    Token none;
+    Token none = Token();
     if ( op == ASSIGN )
       gInter_codes.push_back( InterCode( op, none, a2, a1 ) );
     else if ( op == QUIT ) {
       gInter_codes.push_back( InterCode( op, none, none, none) );
     } // else if
-    else if ( op == NONE ) {
+    else if ( op == NONE && a2.Token_Type() != NONE ) {
       gInter_codes.push_back( InterCode( NONE, none, none, a2 ) );
     } // else if
     else {
       Token temp = Token( TEMP, gTemp_Number );
       gTemp_Number++;
       gInter_codes.push_back( InterCode( op, a1, a2, temp ) );
+      mVariable_stack_.push_back( temp );
     } // else
-    if ( token.Token_Type() == SEMI && mVariable_stack_.size() != 0 )
-      Make_Inter_Code_( token );
+    if ( type == SEMI && mVariable_stack_.size() != 0 || type == PESO && mVariable_stack_.size() > 1 )
+      Make_Inter_Code_( type );
   } // mMake_Intercode
 
 public:
   Compiler() {
-    gInter_codes.clear();
     mOperater_stack_.clear();
-    mOperater_stack_.push_back( Token( "$", NONE ) );
+    mOperater_stack_.push_back( Token() );
     mVariable_stack_.clear();
     mChild_ = NULL;
   } // Compiler()
@@ -467,9 +467,8 @@ public:
   void Reset() {
     gInter_codes.clear();
     mOperater_stack_.clear();
-    mOperater_stack_.push_back( Token( "$", NONE ) );
+    mOperater_stack_.push_back( Token() );
     mVariable_stack_.clear();
-    gTemp_Number = 0;
     if ( mChild_ != NULL ) {
       delete mChild_;
       mChild_ = NULL;
@@ -478,14 +477,18 @@ public:
   } // Reset()
 
   void Push_Token_Back( Token token ) {
+    int type = token.Token_Type();
     if ( !mSwitch_Control_ ) {
-      if ( token.Token_Type() != LPAR ) { // (
-        if ( token.Token_Type() >= ASSIGN ) {
+      if ( type != LPAR ) { // (
+        if ( type >= ASSIGN ) {
           if ( token.Priority() <= mOperater_stack_.back().Priority() ) {
-            Make_Inter_Code_( token );
+            Make_Inter_Code_( type );
           } // if
-          if ( token.Token_Type() != SEMI )
+          if ( type != SEMI ) {
             mOperater_stack_.push_back( token );
+            if ( type == QUIT )
+              Make_Inter_Code_( SEMI );
+          } // if
         } // if
         else
           mVariable_stack_.push_back( token );
@@ -497,7 +500,9 @@ public:
       } // else
 
     } // if
-    else Call_Child_(token);
+    // * Call_Child will take care of ')'
+    else 
+      Call_Child_(token);
 
   } // Push_Token_Back()
 
@@ -510,6 +515,7 @@ private:
   // * Store Tokens after parse
   vector<Token> mTokens_;
   Compiler mCompiler_;
+
 
   // * Syntactic Error (token recognized)
   void Error_() {
@@ -594,6 +600,7 @@ private:
           Error_();
         else return true;
       } // while()
+      return true;
     } // if ()
     else return false;
   } // Is_Arith_Exp()
@@ -703,6 +710,11 @@ public:
     mScnr_ = Scanner();
   } // Parser()
 
+  void Reset() {
+    mScnr_.Reset();
+    mCompiler_.Reset();
+  } // Reset()
+  
   void Parse() {
     if ( !Is_Command_() )
       Error_();
@@ -713,6 +725,8 @@ public:
 
 class Runner {
 private:
+  int mCommand_;
+
   Variable Eval_( InterCode inter_code ) {
     int op = inter_code.operater;
     Token a1 = inter_code.arg1;
@@ -737,6 +751,10 @@ private:
       type = Get_Type_( a1, a2 );
       value = Arith_Value_( op, a1.Value(), a2.Value() );
       a3.Assign( type, value );
+    } // else if
+    else if ( op == NONE ) {
+      type = Get_Type_( a3 );
+      value = a3.Value();
     } // else if
     return Variable( type, value );
   } // Eval()
@@ -769,7 +787,7 @@ private:
       error += "'";
       throw error;
     } // if
-    else return token.Variable_Type;
+    else return token.Variable_Type();
   } // Get_Type_()
 
   int Get_Type_( Token t1, Token t2 ) {
@@ -787,11 +805,36 @@ private:
     else return INTVALUE;
   } // Get_Type_()
 
+  void Print( Variable var ) {
+    int type = var.var_type;
+    int value = var.var_value;
+    if ( type == INTVALUE )
+      cout << fixed <<  setprecision( 0 ) << value << endl;
+    else if ( type == FLOATVALUE )
+      cout << fixed <<  setprecision( 3 ) << value << endl;
+    else if ( type == BOOLVALUE ) {
+      if ( value == 0 )
+        cout << "false" << endl;
+      else cout << "true" << endl;
+    } // else if
+  } // Print()
+
 public:
   bool quit;
   Runner() {
+    mCommand_ = 0;
     quit = false;
   } // Runner()
+
+  void Run() {
+    Variable var;
+    while ( mCommand_ < gInter_codes.size() && !quit ) {
+      var = Eval_( gInter_codes[mCommand_] );
+      mCommand_++;
+    } // while
+    Print( var );
+
+  } // Run()
 
 };
 
@@ -805,11 +848,11 @@ int main() {
     cout << "> ";
     try {
       parser.Parse();
-
+      runner.Run();
     } // try
     catch( string error_info ) {
       cout << error_info << endl;
-
+      parser.Reset();
     } // carch
   } while( !runner.quit ); // TODO solve the problem of EOF
 } // main()
