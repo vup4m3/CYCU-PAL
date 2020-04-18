@@ -22,28 +22,28 @@ enum {
   // Token Type
   IDENTIFIER, // 236
   TEMP, // 237
+  PESO, // $ 238
   // Op
-  ASSIGN,        // := 238
+  SEMI,  // ; 239
+  ASSIGN,        // := 
   EQ,           // =
   NEQ,          // <>
   LESS,         // <
   GREATER,      // >
   LE,           // <=
   GE,           // >=
-  PLUS,         // + 245
-  MINUS,        // - 246
-  STAR,         // * 247
-  SLASH,        // / 248
+  PLUS,         // + 
+  MINUS,        // - 
+  STAR,         // * 
+  SLASH,        // / 
   LPAR,         // (
   RPAR,         // )
-  SEMI,         // ; 251
   // None mean
-  PESO,         // $
   COLON,        // :
   DOT,          // '.'
   COMMA,        // ,
   // Reserved Word
-  QUIT        // quit 255
+  QUIT        // quit 
 };
 
 class Variable {
@@ -465,7 +465,6 @@ public:
   } // Compilar()
 
   void Reset() {
-    gInter_codes.clear();
     mOperater_stack_.clear();
     mOperater_stack_.push_back( Token() );
     mVariable_stack_.clear();
@@ -480,8 +479,8 @@ public:
     int type = token.Token_Type();
     if ( !mSwitch_Control_ ) {
       if ( type != LPAR ) { // (
-        if ( type >= ASSIGN ) {
-          if ( token.Priority() <= mOperater_stack_.back().Priority() ) {
+        if ( type >= PESO ) {
+          if ( token.Priority() <= mOperater_stack_.back().Priority() || type == SEMI ) {
             Make_Inter_Code_( type );
           } // if
           if ( type != SEMI ) {
@@ -791,16 +790,7 @@ private:
   } // Get_Type_()
 
   int Get_Type_( Token t1, Token t2 ) {
-    if ( t1.Variable_Type() == UNDEFINE || t2.Variable_Type() == UNDEFINE ) {
-      string error = "Undefined identifier : '";
-      if ( t1.Variable_Type() == UNDEFINE )
-        error += t1.Name();
-      else 
-        error += t2.Name();
-      error += "'";
-      throw error;
-    } // if 
-    else if ( t1.Variable_Type() == FLOATVALUE || t2.Variable_Type() == FLOATVALUE )
+    if ( Get_Type_( t1 ) == FLOATVALUE || Get_Type_( t2 ) == FLOATVALUE )
       return FLOATVALUE;
     else return INTVALUE;
   } // Get_Type_()
@@ -822,9 +812,14 @@ private:
 public:
   bool quit;
   Runner() {
-    mCommand_ = 0;
-    quit = false;
+    Reset();
   } // Runner()
+
+  void Reset() {
+    mCommand_ =0;
+    gInter_codes.clear();
+    quit = false;
+  } // Reset()
 
   void Run() {
     Variable var;
@@ -853,6 +848,8 @@ int main() {
     catch( string error_info ) {
       cout << error_info << endl;
       parser.Reset();
+      runner.Reset();
     } // carch
   } while( !runner.quit ); // TODO solve the problem of EOF
+  cout << "Program exit..." << endl;
 } // main()
