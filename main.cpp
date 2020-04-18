@@ -2,10 +2,11 @@
 # include <vector>
 # include <iostream>
 # include <iomanip>
+# include <stdlib.h>
 
 using namespace std;
 
-enum {
+enum Type {
   LETTER = 224, // a~b A~Z
   DIGIT,        // 0~9
   BLANK,
@@ -47,42 +48,58 @@ enum {
 };
 
 class Variable {
-public:
-  int var_type;
-  float var_value;
+private:
+  int mVar_type_;
+  float mVar_value_;
 
+public:
   Variable() {
-    var_type = UNDEFINE;
-    var_value = 0;
-  } // VaRiable()
+    mVar_type_ = UNDEFINE;
+    mVar_value_ = 0;
+  } // Variable()
 
   Variable( int type, float value ) {
-    var_type = type;
-    var_value = value;
+    mVar_type_ = type;
+    mVar_value_ = value;
   } // Variable()
 
   void Assign( int type, float value ) {
-    var_type = type;
-    var_value = value;
+    mVar_type_ = type;
+    mVar_value_ = value;
   } // Assign()
 
+  int Var_Type() {
+    return mVar_type_;
+  } // Var_Type()
+
+  int Var_Value() {
+    return mVar_value_;
+  } // Var_Value()
 };
 
 class Identifer {
+private:
+  string mName_;
+  Variable mVar_;
 public:
-  string name;
-  Variable var;
-
   Identifer( string str ) {
-    name = str;
-    var = Variable();
+    mName_ = str;
+    mVar_ = Variable();
     
   } // Identifer()
 
   void Assign( int id_type, float id_value ) {
-    var.Assign( id_type, id_value );
+    mVar_.Assign( id_type, id_value );
     
   } // Assign()
+
+  string Name() {
+    return mName_;
+  } // Name()
+
+  Variable Var() {
+    return mVar_;
+  } // Var()
 
 };
 
@@ -102,10 +119,11 @@ private:
   // * Search ID's address in ID Table
   int Get_Id_Address( string str, int i ) {
     if ( i == gIdTable.size() ) {
-      gIdTable.push_back( Identifer( str ) );
+      Identifer id = Identifer( str );
+      gIdTable.push_back( id );
       return i;
-    } // Get_Id_Address()
-    else if ( gIdTable[i].name == str )
+    } // if
+    else if ( gIdTable[i].Name() == str )
       return i;
     else return Get_Id_Address( str, i+1 );
   } // Get_Id_Address()
@@ -132,7 +150,8 @@ public:
     if ( type == TEMP ) {
       mToken_Type_ = TEMP;
       mValue_ = index;
-      gTempTable.push_back( Variable() );
+      Variable var = Variable();
+      gTempTable.push_back( var );
     } // if
     
   } // Token()
@@ -142,32 +161,30 @@ public:
     mToken_Type_ = NONE;
     mValue_ = 0;
 
-  } // Delete()
+  } // Reset()
 
   int Token_Type() {
     return mToken_Type_;
-  } // Type()
+  } // Token_Type()
 
   int Variable_Type() {
     if ( mToken_Type_ == IDENTIFIER )
-      return gIdTable[mValue_].var.var_type;
+      return gIdTable[mValue_].Var().Var_Type();
     else if ( mToken_Type_ == TEMP )
-      return gTempTable[mValue_].var_type;
+      return gTempTable[mValue_].Var_Type();
     else
       return mToken_Type_;
-  } // Value_Type()
+  } // Variable_Type()()
 
   string Name() {
     return mName_;
   } // Name()
 
   float Value() {
-    if ( mToken_Type_ == IDENTIFIER ) {
-      return gIdTable[mValue_].var.var_value;
-    } // else if
-    else if ( mToken_Type_ == TEMP ) {
-      return gTempTable[mValue_].var_value;
-    } // else if
+    if ( mToken_Type_ == IDENTIFIER )
+      return gIdTable[mValue_].Var().Var_Value();
+    else if ( mToken_Type_ == TEMP ) 
+      return gTempTable[mValue_].Var_Value();
     else return mValue_;
   } // Value()
 
@@ -210,28 +227,29 @@ private:
     if ( mLine_Input_.empty() ) {
       cin.get( ch );
       while ( ch != '\n' && !cin.eof() ) {
-        mLine_Input_.push_back(ch);
+        mLine_Input_.push_back( ch );
         cin.get( ch );
       } // while
+
       if ( ch == '\n' )
-        mLine_Input_.push_back(ch);
-      else mLine_Input_.push_back('\0');
+        mLine_Input_.push_back( ch );
+      else mLine_Input_.push_back( '\0' );
     } // if
 
-      return mLine_Input_[0];
-
-  } // Peek_Char()
+    return mLine_Input_[0];
+  } // Peek_Char_()
 
   char Get_Char_() {
     char ch = Peek_Char_();
-    mLine_Input_.erase(mLine_Input_.begin());
+    mLine_Input_.erase( mLine_Input_.begin() );
     if ( ch == '\n' ) {
       mCurrent_Column_ = 0;
       mCurrent_Line_++;
     } // if
     else mCurrent_Column_++;
     return ch;
-  } // Get_Char()
+
+  } // Get_Char_()
 
   int Input_Type_( char ch ) {
     if ( ch == '+' ) return PLUS;
@@ -253,7 +271,8 @@ private:
     else if ( ch == '\n' ) return NEWLINE;
     else if ( ch == '\0' ) return PL_EOF;
     else return OTHER;
-  } // One_Char_Token()
+
+  } // Input_Type_()
 
   bool Is_One_Char_Token_Type_( int type ) {
     return type == LPAR || type == RPAR || type == PLUS || type == MINUS || type == STAR || type == SEMI;
@@ -372,15 +391,33 @@ public:
 
 // * Intermediate code ( op, a1, a2, a3 )
 class InterCode {
+private:
+  int mOperater_;
+  Token mArg1_, mArg2_, mArg3_;
+
 public:
-  int operater;
-  Token arg1, arg2, arg3;
   InterCode( int op, Token a1, Token a2, Token a3 ) {
-    operater = op;
-    arg1 = a1;
-    arg2 = a2;
-    arg3 = a3;
+    mOperater_ = op;
+    mArg1_ = a1;
+    mArg2_ = a2;
+    mArg3_ = a3;
   } // InterCode()
+
+  int Operater() {
+    return mOperater_;
+  } // Operater()
+
+  Token Arg1() {
+    return mArg1_;
+  } // Arg1()
+
+  Token Arg2() {
+    return mArg2_;
+  } // Arg2()
+
+  Token Arg3() {
+    return mArg3_;
+  } // Arg3()
 
 };
 
@@ -394,10 +431,11 @@ private:
   Compiler *mChild_;
   bool mSwitch_Control_;
 
-  void Call_Child_( Token token) {
+  void Call_Child_( Token token ) {
     if ( token.Token_Type() == RPAR ) {
       mSwitch_Control_ = false;
-      mChild_->Push_Token_Back( Token( "$", PESO ) );
+      Token peso = Token( "$", PESO );
+      mChild_->Push_Token_Back( peso );
       mVariable_stack_.push_back( mChild_->mVariable_stack_.front() );
       delete mChild_;
       mChild_ = NULL;
@@ -413,7 +451,8 @@ private:
       mOperater_stack_.pop_back();
       return tmp.Token_Type();
     } // else
-  } // Op_Stack_Pop_Back()
+
+  } // Op_Stack_Pop_Back_()
 
   Token Val_Stack_Pop_Back_() {
     if ( mVariable_stack_.empty() )
@@ -431,28 +470,37 @@ private:
     Token a2 = Val_Stack_Pop_Back_();
     Token a1 = Val_Stack_Pop_Back_();
     Token none = Token();
-    if ( op == ASSIGN )
-      gInter_codes.push_back( InterCode( op, none, a2, a1 ) );
+    if ( op == ASSIGN ) {
+      InterCode ic = InterCode( op, none, a2, a1 );
+      gInter_codes.push_back( ic );
+    } // if
     else if ( op == QUIT ) {
-      gInter_codes.push_back( InterCode( op, none, none, none) );
+      InterCode ic = InterCode( op, none, none, none );
+      gInter_codes.push_back( ic );
     } // else if
     else if ( op == NONE && a2.Token_Type() != NONE ) {
-      gInter_codes.push_back( InterCode( NONE, none, none, a2 ) );
+      InterCode inter_code = InterCode( NONE, none, none, a2 );
+      gInter_codes.push_back( inter_code );
     } // else if
     else {
       Token temp = Token( TEMP, gTemp_Number );
       gTemp_Number++;
-      gInter_codes.push_back( InterCode( op, a1, a2, temp ) );
+      InterCode inter_code = InterCode( op, a1, a2, temp );
+      gInter_codes.push_back( inter_code );
       mVariable_stack_.push_back( temp );
     } // else
-    if ( type == SEMI && mVariable_stack_.size() != 0 || type == PESO && mVariable_stack_.size() > 1 )
+
+    if ( ( type == SEMI && mVariable_stack_.size() != 0 ) ||
+         ( type == PESO && mVariable_stack_.size() > 1 ) )
       Make_Inter_Code_( type );
-  } // mMake_Intercode
+
+  } // Make_Inter_Code_()
 
 public:
   Compiler() {
+    Token none = Token();
     mOperater_stack_.clear();
-    mOperater_stack_.push_back( Token() );
+    mOperater_stack_.push_back( none );
     mVariable_stack_.clear();
     mChild_ = NULL;
   } // Compiler()
@@ -462,16 +510,19 @@ public:
       delete mChild_;
       mChild_ = NULL;
     } // if
-  } // Compilar()
+
+  } // ~Compiler()
 
   void Reset() {
     mOperater_stack_.clear();
-    mOperater_stack_.push_back( Token() );
+    Token none = Token();
+    mOperater_stack_.push_back( none );
     mVariable_stack_.clear();
     if ( mChild_ != NULL ) {
       delete mChild_;
       mChild_ = NULL;
     } // if
+
     mSwitch_Control_ = false;
   } // Reset()
 
@@ -483,6 +534,7 @@ public:
           if ( token.Priority() <= mOperater_stack_.back().Priority() || type == SEMI ) {
             Make_Inter_Code_( type );
           } // if
+
           if ( type != SEMI ) {
             mOperater_stack_.push_back( token );
             if ( type == QUIT )
@@ -501,7 +553,7 @@ public:
     } // if
     // * Call_Child will take care of ')'
     else 
-      Call_Child_(token);
+      Call_Child_( token );
 
   } // Push_Token_Back()
 
@@ -524,7 +576,7 @@ private:
     mScnr_.Reset();
     mCompiler_.Reset();
     throw error;
-  } // Error()
+  } // Error_()
 
   // * If the Token match parameter, add it at the end of mTokens.
   bool Push_If_Match_( int type ) {
@@ -533,29 +585,34 @@ private:
       return true;
     } // if
     else return false;
-  } // Push_If_Match()
+  } // Push_If_Match_()
 
   // * NUM
   bool Is_Num_() {
     // * Translate SIGN NUM to ( 0 SIGN NUM )
     // * Ex. 1 - -1 >> 1 - ( 0 - 1 )
     if ( mScnr_.Peek_Token().Token_Type() == PLUS ||  mScnr_.Peek_Token().Token_Type() == MINUS ) {
-      mCompiler_.Push_Token_Back( Token( "(", LPAR ) );
-      mCompiler_.Push_Token_Back( Token( "0", INTVALUE ) );
+      Token lpar( "(", LPAR );
+      Token zero( "0", INTVALUE );
+      Token rpar( ")", RPAR );
+      mCompiler_.Push_Token_Back( lpar );
+      mCompiler_.Push_Token_Back( zero );
       if ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
-        if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) )
-          mCompiler_.Push_Token_Back( Token( ")", RPAR ) );
+        if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE ) )
+          mCompiler_.Push_Token_Back( rpar );
         else Error_();
       } // if
 
     } // if
-    else return ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE) );
+    else return ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE ) );
+
+    return false;
   } // Is_Num_()
 
   // * - or +
   bool Is_Sign_() {
     return Push_If_Match_( PLUS ) || Push_If_Match_( MINUS );
-  } // Is_Sign()
+  } // Is_Sign_()
 
   // * [SIGN] NUM | IDENT | '(' <Arith Exp> ')'
   bool Is_Factor_() {
@@ -576,6 +633,8 @@ private:
         } // else
       } // if
     } // else
+
+    return false;
   } // Is_Factor_()
 
   // * <Term> ::= <Factor> { '*' <Factor> | '/' <Factor> }
@@ -599,14 +658,15 @@ private:
           Error_();
         else return true;
       } // while()
+
       return true;
     } // if ()
     else return false;
-  } // Is_Arith_Exp()
+  } // Is_Arith_Exp_()
 
   // * Not_Id_StartFactor ::= [ SIGN ] NUM | '(' <ArithExp> ')'
   bool Is_Not_ID_StartFactor_() {
-    if  (( Is_Sign_() && Is_Num_() ) || Is_Num_() )
+    if  ( ( Is_Sign_() && Is_Num_() ) || Is_Num_() )
       return true;
     else {
       if ( Push_If_Match_( LPAR ) ) { // (
@@ -621,7 +681,9 @@ private:
       } // if
       else return false;
     } // else
-  } // Not_Id_StartFactor_()
+
+    return false;
+  } // Is_Not_ID_StartFactor_()
 
   // * <Not_ID_StartTerm> ::= <Not_ID_StartFactor> { '*' <Factor> | '/' <Factor> }
   bool Is_Not_ID_StartTerm_() {
@@ -655,37 +717,46 @@ private:
         || Push_If_Match_( LESS ) || Push_If_Match_( GE ) || Push_If_Match_( LE );
   } // Is_BooleanOperater_()
 
-  // * <IDlessArithExp> ::= { '+' <Term> | '-' <Term> | '*' <Factor> | '/' <Factor> } [<BooleanOperater> <ArithExp>]
+  // * <IDlessArithExp> ::= { '+' <Term> | '-' <Term> 
+  // * | '*' <Factor> | '/' <Factor> } [<BooleanOperater> <ArithExp>]
   bool Is_IDlessArithExp_() {
     while ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
       if ( !Is_Term_() )
         Error_();
     } // while
+
     while ( Push_If_Match_( STAR ) || Push_If_Match_( SLASH ) ) {
       if ( !Is_Factor_() )
         Error_();
     } // while
+
     if ( Is_BooleanOperater_() ) {
       if ( !Is_Arith_Exp_() )
         Error_();
 
+
     } // if
+
     return true;
   } // Is_IDlessArithExp_()
 
-  // * <Command> ::= IDENT ( ':=' <ArithExp> | <IDlessArithExpOrBexp> ) ';' | <NOT_IDStartArithExpOrBexp> ';' | QUIT
+  // * <Command> ::= IDENT ( ':=' <ArithExp> | <IDlessArithExpOrBexp> ) 
+  // * ';' | <NOT_IDStartArithExpOrBexp> ';' | QUIT
   bool Is_Command_() {
     if ( mScnr_.Peek_Token().Is_Quit() ) {
-      mCompiler_.Push_Token_Back( Token( "quit", QUIT ) );
+      Token quit( "quit", QUIT ); 
+      mCompiler_.Push_Token_Back( quit );
       mScnr_.Reset();
       return true;
     } // if
+
     if ( Push_If_Match_( IDENTIFIER ) ) { // IDENT
       if ( Push_If_Match_( ASSIGN ) ) { // :=
         if ( Is_Arith_Exp_() ) {
           if ( Push_If_Match_( SEMI ) )
             return true;
-        } //if
+        } // if
+
         Error_();
       } // if
       else if ( Is_IDlessArithExp_() && Push_If_Match_( SEMI ) )
@@ -702,6 +773,8 @@ private:
     } // if
     else
       Error_();
+    
+    return false;
   } // Is_Command_()
 
 public:
@@ -725,16 +798,17 @@ public:
 class Runner {
 private:
   int mCommand_;
+  bool mQuit_;
 
   Variable Eval_( InterCode inter_code ) {
-    int op = inter_code.operater;
-    Token a1 = inter_code.arg1;
-    Token a2 = inter_code.arg2;
-    Token a3 = inter_code.arg3;
+    int op = inter_code.Operater();
+    Token a1 = inter_code.Arg1();
+    Token a2 = inter_code.Arg2();
+    Token a3 = inter_code.Arg3();
     int type = NONE;
     float value = 0;
     if ( op == QUIT ) {
-      quit = true;
+      mQuit_ = true;
     } // if
     else if ( op == ASSIGN ) {
       type = Get_Type_( a2 );
@@ -755,8 +829,9 @@ private:
       type = Get_Type_( a3 );
       value = a3.Value();
     } // else if
+
     return Variable( type, value );
-  } // Eval()
+  } // Eval_()
   
   float Arith_Value_( int op, float v1, float v2 ) {
     if ( op == PLUS )
@@ -773,8 +848,9 @@ private:
   } // Arith_Value_()
 
   float Bool_Value_( int op, float v1, float v2 ) {
-    if ( op == EQ && v1 == v2 || op == NEQ && v1 != v2 || op == LESS && v1 < v2 || op == GREATER && v1 > v2 || 
-      op == LE && v1 <= v2 || op == GE && v1 >= v2 )
+    if ( ( op == EQ && v1 == v2 ) || ( op == NEQ && v1 != v2 ) || 
+         ( op == LESS && v1 < v2 ) || ( op == GREATER && v1 > v2 ) || 
+         ( op == LE && v1 <= v2 ) || ( op == GE && v1 >= v2 ) )
       return 1;
     else return 0;
   } // Bool_Value_()
@@ -796,8 +872,8 @@ private:
   } // Get_Type_()
 
   void Print( Variable var ) {
-    int type = var.var_type;
-    int value = var.var_value;
+    int type = var.Var_Type();
+    int value = var.Var_Value();
     if ( type == INTVALUE )
       cout << fixed <<  setprecision( 0 ) << value << endl;
     else if ( type == FLOATVALUE )
@@ -810,26 +886,29 @@ private:
   } // Print()
 
 public:
-  bool quit;
   Runner() {
     Reset();
   } // Runner()
 
   void Reset() {
-    mCommand_ =0;
+    mCommand_ = 0;
     gInter_codes.clear();
-    quit = false;
+    mQuit_ = false;
   } // Reset()
 
   void Run() {
     Variable var;
-    while ( mCommand_ < gInter_codes.size() && !quit ) {
+    while ( mCommand_ < gInter_codes.size() && !mQuit_ ) {
       var = Eval_( gInter_codes[mCommand_] );
       mCommand_++;
     } // while
-    Print( var );
 
+    Print( var );
   } // Run()
+
+  bool Quit() {
+    return mQuit_;
+  } // Quit()
 
 };
 
@@ -837,7 +916,7 @@ int main() {
   int test_number = 0;
   Parser parser;
   Runner runner;
-  // cin >> test_number;
+  cin >> test_number;
   cout << ">>Program starts..." << endl;
   do {
     cout << "> ";
@@ -849,7 +928,7 @@ int main() {
       cout << error_info << endl;
       parser.Reset();
       runner.Reset();
-    } // carch
-  } while( !runner.quit ); // TODO solve the problem of EOF
+    } // catch
+  } while ( !runner.Quit() ); // TODO solve the problem of EOF
   cout << "Program exit..." << endl;
 } // main()
