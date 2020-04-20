@@ -8,43 +8,44 @@ using namespace std;
 
 enum Type {
   LETTER = 224, // a~b A~Z
-  DIGIT,        // 0~9
-  BLANK,
-  TAB,
-  NEWLINE,
-  NONE, // 229
-  OTHER,
-  PL_EOF,
+  DIGIT = 225,        // 0~9
+  BLANK = 226,
+  TAB = 227,
+  NEWLINE = 228,
+  NONE = 229, // 229
+  OTHER = 230,
+  PL_EOF = 231,
   // Value Type
-  INTVALUE, // 232
-  FLOATVALUE, // 233
-  BOOLVALUE, // 234
-  UNDEFINE, // 235
+  INTVALUE = 232, // 232
+  FLOATVALUE = 233, // 233
+  BOOLVALUE = 234, // 234
+  UNDEFINE = 235, // 235
   // Token Type
-  IDENTIFIER, // 236
-  TEMP, // 237
-  PESO, // $ 238
+  IDENTIFIER = 236, // 236
+  TEMP = 237, // 237
   // Op
-  SEMI,  // ; 239
-  ASSIGN,        // := 
-  EQ,           // =
-  NEQ,          // <>
-  LESS,         // <
-  GREATER,      // >
-  LE,           // <=
-  GE,           // >=
-  PLUS,         // + 
-  MINUS,        // - 
-  STAR,         // * 
-  SLASH,        // / 
-  LPAR,         // (
-  RPAR,         // )
+  PESO = 238, // $ 238
+  SEMI = 239,  // ; 239
+  ASSIGN = 240,        // := 
+  EQ = 241,           // =
+  NEQ = 242,          // <>
+  LESS = 243,         // <
+  GREATER = 244,      // >
+  LE = 245,           // <=
+  GE = 246,           // >=
+  PLUS = 247,         // + 
+  MINUS = 248,        // - 
+  STAR = 249,         // * 
+  SLASH = 250,        // / 
+  LPAR = 251,         // (
+  RPAR = 252,         // )
   // None mean
-  COLON,        // :
-  DOT,          // '.'
-  COMMA,        // ,
+  COLON = 253,        // :
+  DOT = 254,          // '.'
+  COMMA = 255,        // ,
+  UNDERLINE = 256,
   // Reserved Word
-  QUIT        // quit 
+  QUIT = 257        // quit 
 };
 
 class Variable {
@@ -270,6 +271,7 @@ private:
     else if ( ch == '\t' ) return TAB;
     else if ( ch == '\n' ) return NEWLINE;
     else if ( ch == '\0' ) return PL_EOF;
+    else if ( ch == '_' ) return UNDERLINE;
     else return OTHER;
 
   } // Input_Type_()
@@ -328,7 +330,7 @@ public:
               interupt = true;
           } // else if ()
           else if ( state == IDENTIFIER ) {
-            if ( type != LETTER && type != DIGIT )
+            if ( type != LETTER && type != DIGIT && type != UNDERLINE )
               interupt = true;
           } // else if ()
           else if ( state == SLASH ) {
@@ -429,11 +431,9 @@ private:
   vector<Token> mOperater_stack_;
   vector<Token> mVariable_stack_;
   Compiler *mChild_;
-  bool mSwitch_Control_;
 
   void Call_Child_( Token token ) {
-    if ( token.Token_Type() == RPAR ) {
-      mSwitch_Control_ = false;
+    if ( token.Token_Type() == RPAR && mChild_->mChild_ == NULL ) {
       Token peso = Token( "$", PESO );
       mChild_->Push_Token_Back( peso );
       mVariable_stack_.push_back( mChild_->mVariable_stack_.front() );
@@ -444,13 +444,9 @@ private:
   } // Call_Child_()
 
   int Op_Stack_Pop_Back_() {
-    if ( mOperater_stack_.empty() )
-      return NONE;
-    else {
-      Token tmp = mOperater_stack_.back();
-      mOperater_stack_.pop_back();
-      return tmp.Token_Type();
-    } // else
+    Token tmp = mOperater_stack_.back();
+    mOperater_stack_.pop_back();
+    return tmp.Token_Type();
 
   } // Op_Stack_Pop_Back_()
 
@@ -478,7 +474,7 @@ private:
       InterCode ic = InterCode( op, none, none, none );
       gInter_codes.push_back( ic );
     } // else if
-    else if ( op == NONE && a2.Token_Type() != NONE ) {
+    else if ( op == PESO && a2.Token_Type() != NONE ) {
       InterCode inter_code = InterCode( NONE, none, none, a2 );
       gInter_codes.push_back( inter_code );
     } // else if
@@ -490,17 +486,13 @@ private:
       mVariable_stack_.push_back( temp );
     } // else
 
-    if ( ( type == SEMI && mVariable_stack_.size() != 0 ) ||
-         ( type == PESO && mVariable_stack_.size() > 1 ) )
-      Make_Inter_Code_( type );
-
   } // Make_Inter_Code_()
 
 public:
   Compiler() {
-    Token none = Token();
+    Token peso = Token( "$", PESO );
     mOperater_stack_.clear();
-    mOperater_stack_.push_back( none );
+    mOperater_stack_.push_back( peso );
     mVariable_stack_.clear();
     mChild_ = NULL;
   } // Compiler()
@@ -515,38 +507,38 @@ public:
 
   void Reset() {
     mOperater_stack_.clear();
-    Token none = Token();
-    mOperater_stack_.push_back( none );
+    Token peso = Token( "$", PESO );
+    mOperater_stack_.push_back( peso );
     mVariable_stack_.clear();
     if ( mChild_ != NULL ) {
       delete mChild_;
       mChild_ = NULL;
     } // if
 
-    mSwitch_Control_ = false;
   } // Reset()
 
   void Push_Token_Back( Token token ) {
     int type = token.Token_Type();
-    if ( !mSwitch_Control_ ) {
+    if ( mChild_ == NULL ) {
       if ( type != LPAR ) { // (
         if ( type >= PESO ) {
           if ( token.Priority() <= mOperater_stack_.back().Priority() || type == SEMI ) {
             Make_Inter_Code_( type );
+            if ( ( type == SEMI && mVariable_stack_.size() != 0 ) ||
+                 ( type == PESO && mOperater_stack_.size() != 1 ) || 
+                 type > SEMI )
+              Push_Token_Back( token );
           } // if
-
-          if ( type != SEMI ) {
+          else {
             mOperater_stack_.push_back( token );
-            if ( type == QUIT )
-              Make_Inter_Code_( SEMI );
-          } // if
+          } // else
+
         } // if
         else
           mVariable_stack_.push_back( token );
 
       } // if
       else { // * meet '('
-        mSwitch_Control_ = true;
         mChild_ = new Compiler();
       } // else
 
@@ -581,7 +573,8 @@ private:
   // * If the Token match parameter, add it at the end of mTokens.
   bool Push_If_Match_( int type ) {
     if ( mScnr_.Peek_Token().Token_Type() == type ) {
-      mCompiler_.Push_Token_Back( mScnr_.Get_Token() );
+      Token token = mScnr_.Get_Token();
+      mCompiler_.Push_Token_Back( token );
       return true;
     } // if
     else return false;
@@ -593,13 +586,15 @@ private:
     // * Ex. 1 - -1 >> 1 - ( 0 - 1 )
     if ( mScnr_.Peek_Token().Token_Type() == PLUS ||  mScnr_.Peek_Token().Token_Type() == MINUS ) {
       Token lpar( "(", LPAR );
-      Token zero( "0", INTVALUE );
+      Token value_zero( "0", INTVALUE );
       Token rpar( ")", RPAR );
       mCompiler_.Push_Token_Back( lpar );
-      mCompiler_.Push_Token_Back( zero );
+      mCompiler_.Push_Token_Back( value_zero );
       if ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
-        if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE ) )
+        if ( Push_If_Match_( INTVALUE ) || Push_If_Match_( FLOATVALUE ) ) {
           mCompiler_.Push_Token_Back( rpar );
+          return true;
+        } // if
         else Error_();
       } // if
 
@@ -609,16 +604,11 @@ private:
     return false;
   } // Is_Num_()
 
-  // * - or +
-  bool Is_Sign_() {
-    return Push_If_Match_( PLUS ) || Push_If_Match_( MINUS );
-  } // Is_Sign_()
-
   // * [SIGN] NUM | IDENT | '(' <Arith Exp> ')'
   bool Is_Factor_() {
     if ( Push_If_Match_( IDENTIFIER ) )
       return true;
-    else if ( ( Is_Sign_() && Is_Num_() ) || Is_Num_() )
+    else if ( Is_Num_() )
       return true;
     else {
       if ( Push_If_Match_( LPAR ) ) {
@@ -656,7 +646,6 @@ private:
       while ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
         if ( !Is_Term_() )
           Error_();
-        else return true;
       } // while()
 
       return true;
@@ -666,7 +655,7 @@ private:
 
   // * Not_Id_StartFactor ::= [ SIGN ] NUM | '(' <ArithExp> ')'
   bool Is_Not_ID_StartFactor_() {
-    if  ( ( Is_Sign_() && Is_Num_() ) || Is_Num_() )
+    if  ( Is_Num_() )
       return true;
     else {
       if ( Push_If_Match_( LPAR ) ) { // (
@@ -698,8 +687,22 @@ private:
     else return false;
   } // Is_Not_ID_StartTerm_()
 
-  // * <Not_ID_StartArithExpOrBexp> ::= <Not_ID_StartTerm> { '+' <Term> || '-' <Term> }
   bool Is_Not_ID_StartArithExpOrBexp_() {
+    if ( Is_Not_ID_StartArithExp_() ) {
+      if ( Is_BooleanOperater_() ) {
+        if ( Is_Arith_Exp_() )
+          return true;
+        else Error_();
+      } // if
+
+      return true;
+    } // if
+    else return false;
+
+  } // Is_Not_ID_StartArithExpOrBexp_()
+
+  // * <Not_ID_StartArithExp> ::= <Not_ID_StartTerm> { '+' <Term> || '-' <Term> }
+  bool Is_Not_ID_StartArithExp_() {
     if ( Is_Not_ID_StartTerm_() ) {
       while ( Push_If_Match_( PLUS ) || Push_If_Match_( MINUS ) ) {
         if ( !Is_Term_() )
@@ -709,7 +712,7 @@ private:
       return true;
     } // if
     else return false;
-  } // Is_Not_ID_StartArithExpOrBexp_()
+  } // Is_Not_ID_StartArithExp_()
 
   // * '=' || '<>' || '>' || '<' || '>=' || '<='
   bool Is_BooleanOperater_() {
@@ -745,7 +748,9 @@ private:
   bool Is_Command_() {
     if ( mScnr_.Peek_Token().Is_Quit() ) {
       Token quit( "quit", QUIT ); 
+      Token semi( ";", SEMI );
       mCompiler_.Push_Token_Back( quit );
+      mCompiler_.Push_Token_Back( semi );
       mScnr_.Reset();
       return true;
     } // if
@@ -788,6 +793,7 @@ public:
   } // Reset()
   
   void Parse() {
+    mCompiler_.Reset();
     if ( !Is_Command_() )
       Error_();
 
@@ -857,7 +863,7 @@ private:
 
   int Get_Type_( Token token ) {
     if ( token.Variable_Type() == UNDEFINE ) {
-      string error = "Undefined identifier : '";
+      string error = "Run Undefined identifier : '";
       error += token.Name();
       error += "'";
       throw error;
@@ -913,11 +919,11 @@ public:
 };
 
 int main() {
-  int test_number = 0;
+  char ch[10];
   Parser parser;
   Runner runner;
-  cin >> test_number;
-  cout << ">>Program starts..." << endl;
+  cin.getline( ch, 10 );
+  cout << "Program starts..." << endl;
   do {
     cout << "> ";
     try {
@@ -930,5 +936,5 @@ int main() {
       runner.Reset();
     } // catch
   } while ( !runner.Quit() ); // TODO solve the problem of EOF
-  cout << "Program exit..." << endl;
+  cout << "Program exits..." << endl;
 } // main()
