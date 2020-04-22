@@ -1,0 +1,37 @@
+當測試「Test case 1 of 3」時，Input為>>1
+3.0;
+3+4;
+3+4.0;
+valueA:=5;
+3+valueA*3-2;
+valueA:=4-1.0-1;
+3+valueA*3-2;
+3+valueA*3-2>7.00000001;
+3+valueA*3-2>6.998;
+;quit // since ';' is unexpected, the whole line is discarded
+salary:=2900+quit; // Comment here
+(())
+Quit quit
+2+3.4.5+6;
+20-30-((3));
+quit@#$//
+3+5;
+<<
+
+正確的輸出應該是>>Program starts...
+> 3.000
+> 7
+> 7.000
+> 5
+> 16
+> 2.000
+> 7.000
+> false
+> true
+> Unexpected token : ';'
+> Undefined identifier : 'quit'
+> Unexpected token : ')'
+> Unexpected token : 'quit'
+> Unexpected token : '.5'
+> -13
+> Program exits...<<

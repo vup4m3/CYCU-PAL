@@ -1,0 +1,91 @@
+-------------------------9---------------------------------------------------------------------
+"3
+salaryXXX := 3000 ;        // this is to test 
+monthsPerYearXXX := 12 ;   // your comment processing
+  incomeXXX := salaryXXX 
+  *                       // and white space processing
+  monthsPerYearXXX 
+  ;
+incomeYYY * 10 ;          // this checks undefined identifier
+incomeXXX * 10 + 50000 % 10 ; // unrecognized token
+incomeXXX * 10 := 500000 ;    // unexpected token
+quit
+3 + 4 + 5 + 6 + 7"
+
+
+
+-------------------------10--------------------------------------------------------------------
+"3
+salaryXXX := 5000 * 1 ;        // this is to test 
+monthsPerYearXXX := 10 *    // your comment processing
+  salaryXXX  ;
+  incomeXXX := salaryXXX 
+  +                       // and white space processing
+  monthsPerYearXXX 
+  ;
+salaryXXX := incomeYYY * 10 ;  // this checks undefined identifier
+incomeXXX * ((10 + 50000) % 10 + 20) ; // unrecognized token
+( incomeXXX + 10 ) * salaryXXX  := 500000 + salaryXXX ;    // unexpected token
+quit
+3 + 4 + 5 + 6 + 7"
+
+
+-------------------------11--------------------------------------------------------------------
+
+"3
+7+2;  // the simplest form of commands
+2     *1 // a line-comment here ; useless ""input"" here :  5+8;
+  ;        // another line-comment ;;; ('5+8;' and ';;;' should be ignored)
+20
+-30
+
+
+  // Hello!  Hello! Can you do 7 + 8 ?
+
+      ; // your program should always skip white spaces
+
+   2   + 3      
+ 
+     ;      100  + 200 // no input is ""got"" until there is a line-enter
+// once a command such as '2+3;' is read in, the system 
+  // immediately gives a response ;
+  // but then, the next command '1+2;' is already ""partially read in"" ;
+  ; 
+2 + ^98 - 5
+2 + / + 5 + 8
+// once an input error is encountered, the remaining input on the same
+  // line is ignored ; input-processing will resume for the next line
+12
+    +
+13
+;
+ccc := ( 20 * 5 ) + 1 ;
+ccc * 2 ;
+ddd / 2 ;
+ddd := 10
+;
+ddd * 2 ;
+ddd := ddd + 10 ;
+e := ddd
+
+  ; e := e * -5 ;
+e >= ddd ;
+e <= ddd ;
+quit"
+
+
+-------------------------12--------------------------------------------------------------------
+"3
+whatever // will be, 
+         // will be.
+:= 500
+;    // whatever : 500
+will := whatever  *  2 ;  // will : 1000
+be := will * 2 ;          // be   : 2000
+whatever := whatever + will + be ; // whatever : 3500
+whatever > will * be ;   // false
+whatever - (will - be * (will - be + will)) // 3500 - ( 1000 - 2000 * (1000-2000+1000) )
+                                          ; // = 3500 - 1000 
+whatever * 5(will + be)
+25 - ( (3 - what) - whatever ) 
+quit"

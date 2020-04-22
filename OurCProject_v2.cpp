@@ -73,7 +73,7 @@ public:
     return mVar_type_;
   } // Var_Type()
 
-  int Var_Value() {
+  float Var_Value() {
     return mVar_value_;
   } // Var_Value()
 };
@@ -440,7 +440,7 @@ private:
 
   } // Op_Stack_Pop_Back_()
 
-  Token Val_Stack_Pop_Back_() {
+  Token Var_Stack_Pop_Back_() {
     if ( mVariable_stack_.empty() )
       return Token();
     else {
@@ -448,13 +448,13 @@ private:
       mVariable_stack_.pop_back();
       return tmp;
     } // else
-  } // Val_Stack_Pop_Back_()
+  } // Var_Stack_Pop_Back_()
 
   // * ( int op, Token arg1, Token arg2, Token arg3 )
   void Make_Inter_Code_( int type ) {
     int op = Op_Stack_Pop_Back_();
-    Token a2 = Val_Stack_Pop_Back_();
-    Token a1 = Val_Stack_Pop_Back_();
+    Token a2 = Var_Stack_Pop_Back_();
+    Token a1 = Var_Stack_Pop_Back_();
     Token none = Token();
     if ( op == ASSIGN ) {
       InterCode ic = InterCode( op, none, a2, mIdentifer_ );
@@ -464,7 +464,7 @@ private:
       InterCode ic = InterCode( op, none, none, none );
       gInter_codes.push_back( ic );
     } // else if
-    else if ( op == PESO && type == SEMI ) {
+    else if ( op == NONE && type == SEMI ) {
       Token print = a2;
       if ( print.Token_Type() == NONE )
         print = mIdentifer_;
@@ -483,9 +483,9 @@ private:
 
 public:
   Compiler() {
-    Token peso = Token( "$", PESO );
+    Token none = Token( "None", NONE );
     mOperater_stack_.clear();
-    mOperater_stack_.push_back( peso );
+    mOperater_stack_.push_back( none );
     mVariable_stack_.clear();
     mIdentifer_ = Token();
     mChild_ = NULL;
@@ -501,8 +501,8 @@ public:
 
   void Reset() {
     mOperater_stack_.clear();
-    Token peso = Token( "$", PESO );
-    mOperater_stack_.push_back( peso );
+    Token none = Token( "None", NONE );
+    mOperater_stack_.push_back( none );
     mVariable_stack_.clear();
     if ( mChild_ != NULL ) {
       delete mChild_;
@@ -516,20 +516,21 @@ public:
     int token_priority = token.Priority();
     if ( mChild_ == NULL ) {
       if ( type != LPAR ) {
-        if ( token_priority <= mOperater_stack_.back().Priority() || type == SEMI ) {
+        if ( ( !mOperater_stack_.empty() && token_priority <= mOperater_stack_.back().Priority() ) ||
+             ( type == SEMI && !mVariable_stack_.empty() ) || 
+             ( type == PESO && mOperater_stack_.size() > 1 ) ) {
           Make_Inter_Code_( type );
-          if ( ( type == SEMI && mVariable_stack_.size() != 0 ) ||
-               ( type >= PESO && mOperater_stack_.size() >= 1 ) )
-            Push_Op_Back( token ); 
+          Push_Op_Back( token ); 
         } // if
-        else mOperater_stack_.push_back( token );
+        else if ( type != SEMI && type != PESO )
+          mOperater_stack_.push_back( token );
       } // if 
       else mChild_ = new Compiler();
     } // if
     else {
       if ( token.Token_Type() == RPAR && mChild_->mChild_ == NULL ) {
         Token peso = Token( "$", PESO );
-        mChild_->Push_Op_Back( token );
+        mChild_->Push_Op_Back( peso );
         mVariable_stack_.push_back( mChild_->mVariable_stack_.front() );
         delete mChild_;
         mChild_ = NULL;
@@ -575,10 +576,10 @@ private:
 
   void Undefine_Error_Check_( Token token ) {
     if ( token.Variable_Type() == UNDEFINE ) {
-        string error = "Undefined identifier : '";
-        error += token.Name();
-        error += "'";
-        throw error;
+      string error = "Undefined identifier : '";
+      error += token.Name();
+      error += "'";
+      throw error;
     } // if
 
   } // Undefine_Error_Check_()
@@ -591,7 +592,7 @@ private:
       return true;
     } // if
     else return false;
-  } // Push_If_Match_()
+  } // Push_Var_If_Match_()
 
   bool Push_Op_If_Match_( int type ) {
     if ( mScnr_.Peek_Token().Token_Type() == type ) {
@@ -749,14 +750,13 @@ private:
     if ( ( EQ <= next_type && next_type <= STAR ) || next_type == SEMI  ) {
       Undefine_Error_Check_( token );
       mCompiler_.Push_Var_Back( token );
-      while ( Push_Op_If_Match_( PLUS ) || Push_Op_If_Match_( MINUS ) ) {
-        if ( !Is_Term_() )
+      while ( PLUS <= next_type && next_type <= SLASH ) {
+        if ( ( Push_Op_If_Match_( PLUS ) || Push_Op_If_Match_( MINUS ) ) && !Is_Term_() )
           Error_();
-      } // while
-   
-      while ( Push_Op_If_Match_( STAR ) || Push_Op_If_Match_( SLASH ) ) {
-        if ( !Is_Factor_() )
+        else if ( ( Push_Op_If_Match_( STAR ) || Push_Op_If_Match_( SLASH ) ) && !Is_Factor_() )
           Error_();
+
+        next_type = mScnr_.Peek_Token().Token_Type();
       } // while
    
       if ( Is_BooleanOperater_() ) {
@@ -874,7 +874,7 @@ private:
       return v1 * v2;
     else {
       if ( v2 == 0 ) 
-        throw "Error";
+        throw string( "Error" );
       else return v1 / v2;
     } // else
   } // Arith_Value_()
@@ -904,14 +904,12 @@ private:
   } // Get_Type_()
 
   void Print( Variable var ) {
-    int type = var.Var_Type();
-    int value = var.Var_Value();
-    if ( type == INTVALUE )
-      cout << fixed <<  setprecision( 0 ) << value << endl;
-    else if ( type == FLOATVALUE )
-      cout << fixed <<  setprecision( 3 ) << value << endl;
-    else if ( type == BOOLVALUE ) {
-      if ( value == 0 )
+    if ( var.Var_Type() == INTVALUE )
+      cout << fixed <<  setprecision( 0 ) << var.Var_Value() << endl;
+    else if ( var.Var_Type() == FLOATVALUE )
+      cout << fixed <<  setprecision( 3 ) << var.Var_Value() << endl;
+    else if ( var.Var_Type() == BOOLVALUE ) {
+      if ( var.Var_Value() == 0 )
         cout << "false" << endl;
       else cout << "true" << endl;
     } // else if
