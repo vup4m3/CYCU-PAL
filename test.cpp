@@ -33,12 +33,15 @@ public:
 
 };
 
+void F() {
+  static int a = 0;
+  a++;
+  cout << a << endl;
+}
 
 int main() {
-  string num = "1.5";
-  float temp = atof(num.c_str());
-  vector<int> vec = { 1, 2, 3, 1, 4 };
-  cout << vec[temp] << endl;
+  F();
+  F();
 }
 enum Type {
   IDENTIFIER,  

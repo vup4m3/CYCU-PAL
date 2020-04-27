@@ -1,3 +1,5 @@
+// ! This version can't pass Undefine identifer
+// ! Only different between v1 and v2 is structure of  Parser and Compiler.
 # include <string>
 # include <vector>
 # include <iostream>
