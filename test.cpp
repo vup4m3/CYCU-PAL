@@ -1,6 +1,7 @@
 # include <iostream>
 # include <vector>
 # include <string>
+# include <string.h>
 using namespace std;
 class Test {
 public:
@@ -39,9 +40,15 @@ void F() {
   cout << a << endl;
 }
 
+int test = 1;
+
+void F1() {
+  test = 2;
+}
+
 int main() {
-  F();
-  F();
+  string str = "asd\aasda";
+  cout << str << endl;
 }
 enum Type {
   IDENTIFIER,  
