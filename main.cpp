@@ -174,11 +174,9 @@ private:
   char Get_Char_() {
     char ch = Peek_Char_();
     mLine_Input_.erase( mLine_Input_.begin() );
-    if ( ch == '\n' ) {
+    if ( ch == '\n' ) 
       mCurrent_Line_++;
-    } // if
     return ch;
-
   } // Get_Char_()
 
   int Input_Type_( char ch ) {
@@ -215,7 +213,6 @@ private:
     else if ( ch == '\\' ) return BACKSLASH;
     else if ( ch == '"' ) return QUOTQUOT;
     else return OTHER;
-
   } // Input_Type_()
 
   bool Is_One_Char_Token_Type_( int type ) {
@@ -235,7 +232,6 @@ private:
     else if ( next_ch == '\"' )
       return "\"";
     else return "";
-
   } // Back_Slash_()
 
 public:
@@ -247,9 +243,7 @@ public:
     if ( mNext_Token != NULL )
       delete mNext_Token;
     mNext_Token = NULL;
-    mCurrent_Line_ = 1;
     mLine_Input_.clear();
-
   } // Reset()
 
   Token Peek_Token() {
@@ -373,23 +367,233 @@ struct InterCode {
   int Parameter;
 };
 
+class Parser {
+private:
+  Scanner mScn_;
+  // * user_input : ( definition | statement ) { definition | statement }
+  bool User_Input_() {
+    // TODO
+  } // User_Input_()
+  // * definition : VOID Identifier function_definition_without_ID
+  // *            | type_specifier Identifier function_definition_or_declarators
+  bool Definition_() {
+    // TODO
+  } // Definition_()
+  // * type_specifier : INT | CHAR | FLOAT | STRING | BOOL
+  bool Type_Specifier_() {
+    // TODO
+  } // Type_Specifier_()
+  // * function_definition_or_declarators : function_definition_without_ID
+  // *                                    | rest_of_declarators
+  bool Func_Def_Or_Decl_() {
+    // TODO
+  } // Func_Def_Or_Decl_()
+  // * rest_of_declarators : [ '[' Constant ']' ] 
+  // *                       { ',' Identifier [ '[' Constant ']' ] } ';'
+  bool Rest_Of_Delc_() {
+    // TODO
+  } // Rest_Of_Delc_()
+  // * function_definition_without_ID : '(' [ VOID | formal_parameter_list ] ')' compound_statement
+  bool Func_Def_Without_Id_() {
+    // TODO
+  } // Func_Def_Without_Id_()
+  // * formal_parameter_list : type_specifier [ '&' ] Identifier [ '[' Constant ']' ] 
+  // *                         { ',' type_specifier [ '&' ] Identifier [ '[' Constant ']' ] }
+  bool Formal_Parameter_List_() {
+    // TODO
+  } // Formal_Parameter_List_()
+  // * compound_statement : '{' { declaration | statement } '}'
+  bool Compound_Statement_() {
+    // TODO
+  } // Compound_Statement_()
+  // * declaration : type_specifier Identifier rest_of_declarators
+  bool Decl_() {
+    // TODO
+  } // Decl_()
+  // * statement : ';'     // the null statement
+  // *           | expression ';'  /* expression here should not be empty */
+  // *           | RETURN [ expression ] ';'
+  // *           | compound_statement
+  // *           | IF '(' expression ')' statement [ ELSE statement ]
+  // *           | WHILE '(' expression ')' statement
+  // *           | DO statement WHILE '(' expression ')' ';'
+  bool Statement_() {
+    // TODO
+  } // Statement_()
+  // * expression : basic_expression { ',' basic_expression }
+  bool Exp_() {
+    // TODO
+  } // Exp_()
+  // * basic_expression : Identifier rest_of_Identifier_started_basic_exp
+  // *                  | ( PP | MM ) Identifier rest_of_PPMM_Identifier_started_basic_exp
+  // *                  | sign { sign } signed_unary_exp romce_and_romloe
+  // *                  | ( Constant | '(' expression ')' ) romce_and_romloe
+  bool Basic_Exp_() {
+    // TODO
+  } // Basic_Exp_()
+  // * rest_of_Identifier_started_basic_exp : [ '[' expression ']' ]
+  // *                                        ( assignment_operator basic_expression 
+  // *                                          | 
+  // *                                          [ PP | MM ] romce_and_romloe 
+  // *                                        )
+  // *                                      | '(' [ actual_parameter_list ] ')' romce_and_romloe
+  bool Rest_Of_Id_Stated_Basic_Exp_() {
+    // TODO
+  } // Rest_Of_Id_Stated_Basic_Exp_()
+  // * rest_of_PPMM_Identifier_started_basic_exp : [ '[' expression ']' ] romce_and_romloe 
+  bool Rest_Of_PPMM_Id_Started_Basic_Exp_() {
+    // TODO
+  } // Rest_Of_PPMM_Id_Started_Basic_Exp_()
+  // * sign : '+' | '-' | '!'
+  bool Sign_() {
+    // TODO
+  } // Sign_()
+  // * actual_parameter_list : basic_expression { ',' basic_expression }
+  bool Actual_Parameter_List_() {
+    // TODO
+  } // Actual_Parameter_List_()
+  // * assignment_operator : '=' | TE | DE | RE | PE | ME
+  bool Assignment_Op_() {
+    // TODO
+  } // * Assignment_Op_()
+  // * rest_of_maybe_conditional_exp_and_rest_of_maybe_logical_OR_exp : rest_of_maybe_logical_OR_exp [ '?' basic_expression ':' basic_expression ]
+  bool Romce_And_Romloe_() {
+    // TODO
+  } // Romce_And_Romloe_()
+  // * rest_of_maybe_logical_OR_exp : rest_of_maybe_logical_AND_exp { OR maybe_logical_AND_exp }
+  bool Rest_Of_Maybe_Logical_Or_Exp_() {
+    // TODO
+  } // Rest_Of_Maybe_Logical_Or_Exp_()
+  // * maybe_logical_AND_exp : maybe_bit_OR_exp { AND maybe_bit_OR_exp }
+  bool Maybe_Logical_And_Exp_() {
+    // TODO
+  } // Maybe_Logical_And_Exp_()
+  // * rest_of_maybe_logical_AND_exp : rest_of_maybe_bit_OR_exp { AND maybe_bit_OR_exp }
+  bool Rest_Of_Maybe_Logical_And_Exp_() {
+    // TODO
+  } // Rest_Of_Maybe_Logical_And_Exp_()
+  // * maybe_bit_OR_exp : maybe_bit_ex_OR_exp { '|' maybe_bit_ex_OR_exp }
+  bool Maybe_bit_Or_Exp_() {
+    // TODO
+  } // Maybe_bit_Or_Exp_()
+  // * rest_of_maybe_bit_OR_exp : rest_of_maybe_bit_ex_OR_exp { '|' maybe_bit_ex_OR_exp }
+  bool Rest_Of_Maybe_Bit_Or_Exp_() {
+    // TODO
+  } // Rest_Of_Maybe_Bit_Or_Exp_()
+  // * maybe_bit_ex_OR_exp : maybe_bit_AND_exp { '^' maybe_bit_AND_exp }
+  bool Maybe_Bit_Ex_Or_Exp_() {
+    // TODO
+  } // Maybe_Bit_Ex_Or_Exp_()
+  // * rest_of_maybe_bit_ex_OR_exp : rest_of_maybe_bit_AND_exp { '^' maybe_bit_AND_exp }
+  bool Rest_Of_Maybe_Bit_Ex_Or_Exp_() {
+    // TODO
+  } // Rest_Of_Maybe_Bit_Ex_Or_Exp_()
+  // * maybe_bit_AND_exp : maybe_equality_exp { '&' maybe_equality_exp }
+  bool Maybe_Bit_And_Exp_() {
+    // TODO
+  } // Maybe_Bit_And_Exp_()
+  // * rest_of_maybe_bit_AND_exp : rest_of_maybe_equality_exp { '&' maybe_equality_exp }
+  bool Rest_Of_Maybe_Bit_And_Exp_() {
+    // TODO
+  } // Rest_Of_Maybe_Bit_And_Exp_()
+  // * maybe_equality_exp : maybe_relational_exp 
+  // *                      { ( EQ | NEQ ) maybe_relational_exp}
+  bool Maybe_Equality_Exp_() {
+    // TODO
+  } // Maybe_Equality_Exp_()
+  // * rest_of_maybe_equality_exp : rest_of_maybe_relational_exp 
+  // *                              { ( EQ | NEQ ) maybe_relational_exp }
+  bool Rest_Of_Maybe_Equality_Exp_() {
+    // TODO
+  } // Rest_Of_Maybe_Equality_Exp_()
+  // * maybe_relational_exp : maybe_shift_exp 
+  // *                        { ( '<' | '>' | LE | GE ) maybe_shift_exp }
+  bool Maybe_Relational_Exp_() {
+    // TODO
+  } // Maybe_Relational_Exp_()
+  // * rest_of_maybe_relational_exp : rest_of_maybe_shift_exp 
+  // *                                { ( '<' | '>' | LE | GE ) maybe_shift_exp }
+  bool Rest_Of_Maybe_Relational_Exp_() {
+    // TODO
+  } // Rest_Of_Maybe_Relational_Exp_()
+// * maybe_shift_exp : maybe_additive_exp { ( LS | RS ) maybe_additive_exp }
+  bool Maybe_Shift_Exp_() {
+    // TODO
+  } // Maybe_Shift_Exp_()
+// * rest_of_maybe_shift_exp : rest_of_maybe_additive_exp { ( LS | RS ) maybe_additive_exp }
+  bool Rest_Of_Maybe_Shift_Exp_() {
+    // TODO
+  } // Rest_Of_Maybe_Shift_Exp_()
+// * maybe_additive_exp : maybe_mult_exp { ( '+' | '-' ) maybe_mult_exp }
+  bool Maybe_Additive_Exp_() {
+    // TODO
+  } // Maybe_Additive_Exp_()
+// * rest_of_maybe_additive_exp : rest_of_maybe_mult_exp { ( '+' | '-' ) maybe_mult_exp }
+  bool Rest_Of_Maybe_Additive_Exp_() {
+    // TODO
+  } // Rest_Of_Maybe_Additive_Exp_()
+// * maybe_mult_exp : unary_exp rest_of_maybe_mult_exp
+  bool Maybe_Mult_Exp_() {
+    // TODO
+  } // Maybe_Mult_Exp_()
+// * rest_of_maybe_mult_exp : { ( '*' | '/' | '%' ) unary_exp }  /* could be empty ! */
+  bool Rest_Of_Maybe_Mult_Exp_() {
+    // TODO
+  } // Rest_Of_Maybe_Mult_Exp_()
+// * unary_exp : sign { sign } signed_unary_exp
+// *           | unsigned_unary_exp
+// *           | ( PP | MM ) Identifier [ '[' expression ']' ]
+  bool Unary_Exp_() {
+    // TODO
+  } // Unary_Exp_()
+// * signed_unary_exp : Identifier [ '(' [ actual_parameter_list ] ')' 
+// *                               |
+// *                                 '[' expression ']'
+// *                               ]
+// *                  | Constant 
+// *                  | '(' expression ')'
+  bool Signed_Unary_Exp_() {
+    // TODO
+  } // Signed_Unary_Exp_()
+// * unsigned_unary_exp : Identifier [ '(' [ actual_parameter_list ] ')' 
+// *                                 |
+// *                                   [ '[' expression ']' ] [ ( PP | MM ) ]
+// *                                 ]
+// *                    | Constant 
+// *                    | '(' expression ')'
+  bool Unsigned_Unary_Exp_() {
+    // TODO
+  } // UNsigned_Unary_Exp_()
+public:
+  vector<InterCode> Parse() {
+    // TODO
+  } // Parse()
+};
+
 class Runner {
 private:
   int mPc,mAx;
+public:
+  bool Eval( vector<InterCode> new_codes ) {
+    // TODO
+  } // Eval()
 };
 
 int main() {
   char ch[10];
   cin.getline( ch, 10 );
+  Parser parser;
+  Runner runner;
+  bool done = false;
   cout << "Our-C running ..." << endl;
   do {
     cout << "> ";
     try {
-      // TODO Main function
+      done = runner.Eval( parser.Parse() );
     } // try
     catch( string error_info ) {
       cout << error_info << endl;
     } // catch
-  } while ( true ); // TODO solve the problem of EOF
+  } while ( !done ); // TODO solve the problem of EOF
   cout << "Our-C exited ..." << endl;
 } // main()
