@@ -110,6 +110,7 @@ private:
   int mToken_Type_;
   string mName_;
   Variable mVar_;
+
 public:
   Token( int type, string name ) {
     float var_value;
@@ -360,6 +361,13 @@ public:
     return token;
   } // Get_Token()
 
+  string Line_String() {
+    string str = "Line ";
+    str += to_string( mCurrent_Line_ );
+    str += " :";
+    return str;
+  } // Current_Line()
+
 };
 
 struct InterCode {
@@ -370,18 +378,41 @@ struct InterCode {
 class Parser {
 private:
   Scanner mScn_;
+  Token mToken_;
+  bool Match_( int type ) {
+    if ( mScn_.Peek_Token().Type() == type )
+      return true;
+    else {
+      mToken_ = mScn_.Get_Token();
+      return true;
+    } // else
+  } // Match_()
   // * user_input : ( definition | statement ) { definition | statement }
   bool User_Input_() {
-    // TODO
+    if ( Definition_() ) {
+      // TODO
+    } // if
+    else if ( Statement_() ) {
+      // TODO
+    } // else if
+    else return false;
+
+    while ( Definition_() || Statement_() ) {
+      // TODO
+    } // while()
   } // User_Input_()
   // * definition : VOID Identifier function_definition_without_ID
   // *            | type_specifier Identifier function_definition_or_declarators
   bool Definition_() {
-    // TODO
+    if ( Match_( VOID ) ) {
+      if ( Match_( IDENTIFER ) )
+    }
   } // Definition_()
   // * type_specifier : INT | CHAR | FLOAT | STRING | BOOL
   bool Type_Specifier_() {
-    // TODO
+    if ( Match_( INT ) || Match_( CHAR ) || Match_( FLOAT ) || Match_( STRING ) || Match_( BOOL ) )
+      return true;
+    else return false;
   } // Type_Specifier_()
   // * function_definition_or_declarators : function_definition_without_ID
   // *                                    | rest_of_declarators
@@ -565,6 +596,14 @@ private:
     // TODO
   } // UNsigned_Unary_Exp_()
 public:
+  void Error() {
+    string msg = mScn_.Line_String();
+    msg += "unexpected token : '";
+    msg += mScn_.Get_Token().Name();
+    msg += "'";
+    throw msg;
+  } // Error()
+
   vector<InterCode> Parse() {
     // TODO
   } // Parse()

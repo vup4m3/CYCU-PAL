@@ -47,7 +47,9 @@ void F1() {
 }
 
 int main() {
-  string str = "asd\aasda";
+  int a = 10;
+  string str = "abc";
+  str += to_string(a);
   cout << str << endl;
 }
 enum Type {
