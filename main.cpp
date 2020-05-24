@@ -61,31 +61,28 @@ enum Type {
   COLON,       // :
   BACKSLASH    
 };
-
+// * Variable contain Type, Value(int, float, char), String(For string)
 class Variable {
 private:
   int mType_;
   float mValue_;
   string mStr_;
-
 public:
   Variable() {
-    mType_ = UNDEFINE;
+    mType_ = 0;
     mValue_ = 0;
     mStr_ = "";
   } // Variable()
 
   Variable( int type, float value, string str ) {
     mType_ = type;
+    mValue_ = value;
     mStr_ = str;
-    if ( type == INT )
-      mValue_ = int( value );
-    else mValue_ = value;
-  } // Constant()
+  } // Variable()
 
   int Type() {
     return mType_;
-  } // Tpye()
+  } // Type()
 
   float Value() {
     return mValue_;
@@ -96,56 +93,180 @@ public:
   } // Str()
 
 };
+// * Pool of Constant
+class ConstantPool {
+private:
+  vector<Variable> mPool_;
+public:
+  int Get_Addr( Token token ) {
+    int value = 0, type = token.Cons_Type();
+    string str = token.Name();
+    if ( type == INT || type == FLOAT )
+      value = atof( str.c_str() );
+    else if ( type == CHAR )
+      value = str[0];
+    else value = 0;
+
+    if ( type != STRING )
+      str = "";
+    int i = 0;
+    while ( i < mPool_.size() ) {
+      if ( mPool_[i].Type() == type ) {
+        if ( type == STRING && mPool_[i].Str() == str )
+          return i;
+        else if ( ( type == INT || type == FLOAT || type == CHAR ) && mPool_[i].Value() == value )
+          return i;
+        
+      } // if
+      
+      i++;
+    } // while()
+
+    Variable var = Variable( type, value , str );
+    mPool_.push_back( var );
+  } // Get_Addr()
+
+  Variable Load( int addr ) {
+    return mPool_[addr];
+  } // Load()
+};
 
 class Identifer {
 private:
   string mName_;
   int mAddr_;
-  int mType_;
-  Identifer *mNext_Id_;
-};
-
-class Token {
-private:
-  int mToken_Type_;
-  string mName_;
-  Variable mVar_;
-
 public:
-  Token( int type, string name ) {
-    float var_value;
-    int var_type = FLOAT;
-    mToken_Type_ = CONSTANT;
+  Identifer( string name, int addr ) {
     mName_ = name;
-    if ( type == INT_CONS || type == FLOAT_CONS ) {
-      var_value = atof( name.c_str() );
-      if ( type == INT_CONS ) {
-        var_value = int( var_value );
-        var_type = INT;
-      } // if
-      mVar_ = Variable( var_type, var_value, "" );
-    } // if
-    else if ( type == STR_CONS || type == CHAR_CONS ) {
-      type == STR_CONS ? var_type = STRING : var_type = CHAR;
-      mVar_ = Variable( var_type, 0, name );
-    }
-    else {
-      mToken_Type_ = type;
-      mVar_ = Variable();
-    } // else 
-  } // Token()
-
-  int Type() {
-    return mToken_Type_;
-  } // Type()
+    mAddr_ = addr;
+  } // Identifer()
 
   string Name() {
     return mName_;
   } // Name()
 
-  Variable Var() {
-    return mVar_;
-  } // Var()
+  int Addr() {
+    return mAddr_;
+  } // Addr()
+};
+// * Table of Identifer
+class IdTable {
+private:
+  vector<Identifer> mTable_;
+  void Error_( Token token ) {
+    string msg = token.Line() + "undefined identifer: '";
+    msg += token.Name();
+    msg += "'";
+    throw msg;
+  } // Error_()
+public:
+  // * Load address of Identifer by token, if token undefine throw error.
+  int Load_Addr( Token token ) {
+    string str = token.Name();
+    for ( int i = 0; i < mTable_.size() && str < mTable_[i].Name(); i++ ) {
+      if ( mTable_[i].Name() == str )
+        return mTable_[i].Addr();
+    } // for
+
+    Error_( token ); // Can't find this token in Table
+  } // Load_Addr()
+  // * Define new Identifer in Id-Table
+  void Define( Identifer id, int i ) {
+    if ( mTable_.size() < i ) {
+      mTable_.push_back( id ); 
+    }
+    else if ( mTable_[i].Name() < id.Name() ) 
+      mTable_.insert( mTable_.begin() + i , id );
+    else 
+      Define( id, ++i );
+  } // Define()
+};
+
+class Data {
+private:
+  vector<Variable> mData_;
+public:
+  Data() {
+    mData_.clear();
+  } // Data()
+  // * Make a Data frame for function
+  Data( vector<Variable> arg,  int num_of_var ) {
+    for ( int i = 0; i < num_of_var; i++) {
+      if ( arg.size() > i )
+        mData_.push_back( arg[i] );
+      else {
+        Variable var;
+        mData_.push_back( var );
+      } // else
+
+    } // for
+
+  } // Data()
+  // * Reset Data frame
+  void Reset() {
+    mData_.clear();
+  } // Reset()
+  // * Load Variable from Data by address
+  Variable Load( int addr ) {
+    return mData_[addr];
+  } // Load()
+  // * New Variable in Data
+  int New() {
+    Variable var;
+    mData_.push_back( var );
+    return mData_.size();
+  } // New()
+  // * Store Variable in Data by address
+  void Store( Variable var, int addr ) {
+    mData_[addr] = var;
+  } // Store()
+};
+
+class Token {
+private:
+  int mToken_Type_;
+  int mConstant_Type_;
+  string mName_;
+  int mLine_;
+
+public:
+  Token( int type, string name, int line ) {
+    mName_ = name;
+    mConstant_Type_ = 0;
+    mLine_ = line;
+    if ( type == INT_CONS || type == STR_CONS || type == CHAR_CONS || type == FLOAT_CONS ) {
+      if ( type == INT_CONS )
+        mConstant_Type_ = INT;
+      else if ( type == FLOAT_CONS )
+        mConstant_Type_ = FLOAT;
+      else if ( type == CHAR_CONS )
+        mConstant_Type_ = CHAR;
+      else mConstant_Type_ = STR_CONS;
+
+      mToken_Type_ = CONSTANT;
+    } // if
+    else mToken_Type_ = type;
+
+  } // Token()
+
+  int Token_Type() {
+    return mToken_Type_;
+  } // Token_Type()
+
+  int Cons_Type() {
+    return mConstant_Type_;
+  } // Cons_Type()
+
+  string Name() {
+    return mName_;
+  } // Name()
+
+  string Line() {
+    string str = "Line ";
+    str += to_string( mLine_ );
+    str += " :";
+    return str;
+  } // Line()
 
 };
 
@@ -263,7 +384,7 @@ public:
             state = IDENTIFER;
           else if ( Is_One_Char_Token_Type_( type ) ) {
             token_name = Get_Char_();
-            *mNext_Token = Token( type, token_name );
+            *mNext_Token = Token( type, token_name, mCurrent_Line_ );
             return *mNext_Token;
           } // else if 
           else if ( type == QUOT || type == QUOTQUOT ) {
@@ -343,7 +464,7 @@ public:
             throw error_msg;
           } // if
           else 
-            *mNext_Token = Token( state, token_name );
+            *mNext_Token = Token( state, token_name, mCurrent_Line_ );
           stop = true;
         } // else 
 
@@ -371,21 +492,21 @@ public:
 };
 
 struct InterCode {
-  int Operater;
-  int Parameter;
+  int type;
+  int operater;
+  float parameter;
 };
 
 class Parser {
 private:
   Scanner mScn_;
-  Token mToken_;
+  Token *mToken_;
   bool Match_( int type ) {
-    if ( mScn_.Peek_Token().Type() == type )
+    if ( mScn_.Peek_Token().Token_Type() == type ) {
+      *mToken_ = mScn_.Get_Token();
       return true;
-    else {
-      mToken_ = mScn_.Get_Token();
-      return true;
-    } // else
+    }
+    else return false;
   } // Match_()
   // * user_input : ( definition | statement ) { definition | statement }
   bool User_Input_() {
@@ -400,13 +521,26 @@ private:
     while ( Definition_() || Statement_() ) {
       // TODO
     } // while()
+
+    return true;
   } // User_Input_()
   // * definition : VOID Identifier function_definition_without_ID
   // *            | type_specifier Identifier function_definition_or_declarators
   bool Definition_() {
     if ( Match_( VOID ) ) {
-      if ( Match_( IDENTIFER ) )
-    }
+      // TODO
+      if ( Func_Def_Without_Id_() ) {
+        // TODO
+        return true;
+      } // if
+    } // if
+    else if ( Type_Specifier_() ) {
+      if ( Func_Def_Or_Decl_() ) {
+        // TODO
+        return true;
+      } // if
+    } // else
+    else return false;
   } // Definition_()
   // * type_specifier : INT | CHAR | FLOAT | STRING | BOOL
   bool Type_Specifier_() {
@@ -417,29 +551,136 @@ private:
   // * function_definition_or_declarators : function_definition_without_ID
   // *                                    | rest_of_declarators
   bool Func_Def_Or_Decl_() {
-    // TODO
+    if ( Func_Def_Without_Id_() ) {
+      // TODO
+      return true;
+    } // if
+    else if ( Rest_Of_Delc_() ) {
+      // TODO
+      return true;
+    } // else if
+    else return false;
   } // Func_Def_Or_Decl_()
   // * rest_of_declarators : [ '[' Constant ']' ] 
   // *                       { ',' Identifier [ '[' Constant ']' ] } ';'
   bool Rest_Of_Delc_() {
-    // TODO
+    if ( Match_( LSQB ) ) {
+      if ( Match_( CONSTANT ) ) {
+        if ( Match_( RSQB ) ) {
+          // TODO
+        } // if
+        else Error_();
+
+      } // if
+      else Error_();
+
+    } // if
+
   } // Rest_Of_Delc_()
   // * function_definition_without_ID : '(' [ VOID | formal_parameter_list ] ')' compound_statement
   bool Func_Def_Without_Id_() {
-    // TODO
+    if ( Match_( LPAR ) ) {
+      if ( Match_( VOID ) ) {
+        // TODO
+      } // if
+      else if ( Formal_Parameter_List_() ) {
+
+      } // else if
+
+      if ( Match_( RPAR ) ) {
+        // TODO
+      } // if
+      else {
+        Error_();
+      } // else 
+    } // if
+    if ( Compound_Statement_() ) {
+      // TODO
+      return true;
+    } // if
+    else
+      return false;
   } // Func_Def_Without_Id_()
   // * formal_parameter_list : type_specifier [ '&' ] Identifier [ '[' Constant ']' ] 
   // *                         { ',' type_specifier [ '&' ] Identifier [ '[' Constant ']' ] }
   bool Formal_Parameter_List_() {
-    // TODO
+    if ( Type_Specifier_() ) {
+      if ( Match_( AMPER ) ) {
+        // TODO
+      } // if
+      
+      if ( Match_( IDENTIFER ) ) {
+        if ( Match_( LSQB ) ) {
+          if ( Match_( CONSTANT ) ) {
+            if ( Match_( RSQB ) ) {
+            // TODO
+            } // if
+            else Error_();
+
+          } // if
+          else Error_();
+
+        } // if
+
+      } // if
+
+      while ( Match_( COMMA ) ) {
+        if ( Type_Specifier_() ) {
+          if ( Match_( AMPER ) ) {
+            // TODO
+          } // if
+
+          if ( Match_( IDENTIFER ) ) {
+            if ( Match_( LSQB ) ) {
+              if ( Match_( CONSTANT ) ) {
+                if ( Match_( RSQB ) ) {
+                // TODO
+                } // if
+                else Error_();
+
+              } // if
+              else Error_();
+
+            } // if
+
+          } // if
+
+        }// if
+
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Formal_Parameter_List_()
   // * compound_statement : '{' { declaration | statement } '}'
   bool Compound_Statement_() {
-    // TODO
+    if ( Match_( LBRACE ) ) {
+      while ( Decl_() || Statement_() ) {
+        // TODO
+      } // while
+
+      if ( Match_( RBRACE ) ) {
+        // TODO
+      } // if
+      else Error_();
+
+    } // if
   } // Compound_Statement_()
   // * declaration : type_specifier Identifier rest_of_declarators
   bool Decl_() {
-    // TODO
+    if ( Type_Specifier_() ) {
+      if ( Match_( IDENTIFER ) ) {
+        if ( Rest_Of_Delc_() ) {
+          // TODO
+        } // if
+        else Error_();
+
+      } // if
+      else Error_();
+
+    } // if
+    else Error_();
   } // Decl_()
   // * statement : ';'     // the null statement
   // *           | expression ';'  /* expression here should not be empty */
@@ -449,18 +690,172 @@ private:
   // *           | WHILE '(' expression ')' statement
   // *           | DO statement WHILE '(' expression ')' ';'
   bool Statement_() {
-    // TODO
+    if ( Match_( SEMI ) ) {
+      // TODO
+      return true;
+    } // if
+    else if ( Exp_() ) {
+      if ( Match_( SEMI ) ) {
+        // TODO
+        return true;
+      } // if
+      else Error_();
+
+    } // else if
+    else if ( Match_( RETURN ) ) {
+      if ( Exp_() ) {
+        // TODO
+      } // if
+
+      if ( Match_( SEMI ) ) {
+        return true;
+      } // if
+      else Error_();
+      
+    } // else if
+    else if ( Compound_Statement_() ) {
+      // TODO
+      return true;
+    } // else if
+    else if ( Match_( IF ) ) {
+      if ( Match_( LPAR ) ) {
+        if ( Exp_() ) {
+          if ( Match_( RPAR ) ) {
+            // TODO
+            if ( Statement_() ) {
+              if ( Match_( ELSE ) ) {
+                if ( Statement_() ) {
+                  // TODO
+                } /// if
+                else Error_();
+
+              } // if
+
+              return true;
+            } // if
+            else Error_();
+          } // if
+          else Error_();
+        } // if
+        else Error_();
+
+      } // if
+      else Error_();
+    } // else if
+    else if ( Match_( WHILE ) ) {
+      if( Match_( LBRACE ) ) {
+        if ( Exp_() ) {
+          if ( Match_( LBRACE ) ) {
+            if ( Statement_() ) {
+              return true;
+            } // if
+            else Error_();
+
+          } // if
+          else Error_();
+        } // if
+        else Error_();
+      } // if
+      else Error_();
+
+    } // else if
+    else if ( Match_( DO ) ) {
+      if ( Statement_() ) {
+        if ( Match_( WHILE ) ) {
+          if ( Match_( LBRACE ) ) {
+            if ( Exp_() ) {
+              if ( Match_( RBRACE ) ) {
+                if ( Match_( SEMI ) )
+                  return true;
+                else Error_();
+              } // if 
+              else Error_();
+            
+            } // if
+            else Error_();
+
+          } // if
+          else Error_();
+
+        } // if 
+        else Error_();
+
+      } // if 
+      else Error_();
+
+    } // else if
+    else return false;
+
   } // Statement_()
   // * expression : basic_expression { ',' basic_expression }
   bool Exp_() {
-    // TODO
+    if ( Basic_Exp_() ) {
+      while ( Match_( COMMA ) ) {
+        if ( Basic_Exp_() )
+          ; // TODO
+        else Error_();
+
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Exp_()
   // * basic_expression : Identifier rest_of_Identifier_started_basic_exp
   // *                  | ( PP | MM ) Identifier rest_of_PPMM_Identifier_started_basic_exp
   // *                  | sign { sign } signed_unary_exp romce_and_romloe
   // *                  | ( Constant | '(' expression ')' ) romce_and_romloe
   bool Basic_Exp_() {
-    // TODO
+    if ( Match_( IDENTIFER ) ) {
+      if ( Rest_Of_Id_Stated_Basic_Exp_() )  {
+        // TODO 
+        return true;
+      } // if
+      else Error_();
+
+    } // if
+    else if ( Match_( PP ) || Match_( MM ) ) {
+      if ( Match_( IDENTIFER ) ) {
+        if ( Rest_Of_PPMM_Id_Started_Basic_Exp_() ) {
+          return true;
+        } // if
+        else Error_();
+
+      } // if
+      else Error_();
+
+    } // else if
+    else if ( Sign_() ) {
+      while( Sign_() ) {
+        // TODO
+      } // while
+      if ( Signed_Unary_Exp_() ) {
+        if ( Romce_And_Romloe_() ) {
+          return true;
+        } // if
+        else Error_();
+      } // if
+      else Error_();
+
+    } // else 
+    else if ( Match_( CONSTANT ) || Match_( LPAR ) ) {
+      if( mToken_->Token_Type() == LPAR ) {
+        if ( Exp_() ) {
+          if ( !Match_( RPAR ) ) 
+            Error_();
+
+        } // if
+        else Error_();
+
+      } // if
+      
+      if ( Romce_And_Romloe_() ) 
+        return true;
+      else Error_();
+
+    } // else if
+    else return false;
+
   } // Basic_Exp_()
   // * rest_of_Identifier_started_basic_exp : [ '[' expression ']' ]
   // *                                        ( assignment_operator basic_expression 
@@ -469,113 +864,388 @@ private:
   // *                                        )
   // *                                      | '(' [ actual_parameter_list ] ')' romce_and_romloe
   bool Rest_Of_Id_Stated_Basic_Exp_() {
-    // TODO
+    if ( Match_( LPAR ) ) {
+      if( Actual_Parameter_List_() ) {
+        // TODO
+      } // if
+      if ( Match_( RPAR ) ) {
+        if ( Romce_And_Romloe_() ) {
+          return true;
+        } // if
+        else Error_();
+
+      } // if
+      else Error_();
+      
+    } // if
+    else {
+      bool front = false;
+      if ( Match_( LSQB ) ) {
+        if ( Exp_() ) {
+          if ( !Match_( RSQB ) ) 
+            Error_();
+          else front = true;
+        
+        } // if
+      } // if
+
+      if ( Assignment_Op_() ) {
+        if ( Basic_Exp_() )
+          return true;
+        else Error_();
+
+      } // if
+      else if ( Match_( PP ) || Match_( MM ) ) {
+        if ( Romce_And_Romloe_() ) {
+          return true;
+        } // if
+        else Error_();
+      } // else if
+      else if ( front == true )
+        Error_();
+      else return false;
+
+    } // else
+    
   } // Rest_Of_Id_Stated_Basic_Exp_()
   // * rest_of_PPMM_Identifier_started_basic_exp : [ '[' expression ']' ] romce_and_romloe 
   bool Rest_Of_PPMM_Id_Started_Basic_Exp_() {
-    // TODO
+    if ( Match_( LSQB ) ) {
+      if ( Exp_() ) {
+        if ( !Match_( RSQB ) )
+          Error_();
+      } // if
+
+    } // if
+
+    if ( Romce_And_Romloe_() )
+      return true;
+    else return false;
+
   } // Rest_Of_PPMM_Id_Started_Basic_Exp_()
   // * sign : '+' | '-' | '!'
   bool Sign_() {
-    // TODO
+    return Match_( PLUS ) || Match_( MINUS ) || Match_( NOT );
   } // Sign_()
   // * actual_parameter_list : basic_expression { ',' basic_expression }
-  bool Actual_Parameter_List_() {
-    // TODO
+  bool Actual_Parameter_List_() { 
+    if ( Basic_Exp_() ) {
+      while ( Match_( COMMA ) ) {
+        if ( !Basic_Exp_() )
+          Error_();
+    
+      } // while
+
+      return true;
+    } //if
+    else return false;
   } // Actual_Parameter_List_()
   // * assignment_operator : '=' | TE | DE | RE | PE | ME
   bool Assignment_Op_() {
-    // TODO
-  } // * Assignment_Op_()
+    return Match_( EQ ) || Match_( TE ) || Match_( RE ) || Match_( PE ) || Match_( ME );
+  } // Assignment_Op_()
   // * rest_of_maybe_conditional_exp_and_rest_of_maybe_logical_OR_exp : rest_of_maybe_logical_OR_exp [ '?' basic_expression ':' basic_expression ]
   bool Romce_And_Romloe_() {
-    // TODO
+    if ( Rest_Of_Maybe_Logical_Or_Exp_() ) {
+      if ( Match_( QUE ) ) {
+        if ( Basic_Exp_() ) {
+          if ( Match_( COLON ) ) {
+            if (!Basic_Exp_() ) 
+              Error_();
+
+          } // if
+          else Error_();
+
+        } // if
+        else Error_();
+
+      } //if 
+
+      return true;
+    } // if 
+    else return false;
   } // Romce_And_Romloe_()
   // * rest_of_maybe_logical_OR_exp : rest_of_maybe_logical_AND_exp { OR maybe_logical_AND_exp }
   bool Rest_Of_Maybe_Logical_Or_Exp_() {
-    // TODO
+    if ( Rest_Of_Maybe_Logical_And_Exp_() ) {
+      while ( Match_( OR ) ) {
+        if ( !Maybe_Logical_And_Exp_() ) 
+          Error_();
+
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Rest_Of_Maybe_Logical_Or_Exp_()
   // * maybe_logical_AND_exp : maybe_bit_OR_exp { AND maybe_bit_OR_exp }
   bool Maybe_Logical_And_Exp_() {
-    // TODO
+    if ( Maybe_Bit_Or_Exp_() ) {
+      while ( Match_( AND ) ) {
+        if ( !Maybe_Bit_Or_Exp_() )
+          Error_();
+
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Maybe_Logical_And_Exp_()
   // * rest_of_maybe_logical_AND_exp : rest_of_maybe_bit_OR_exp { AND maybe_bit_OR_exp }
   bool Rest_Of_Maybe_Logical_And_Exp_() {
-    // TODO
+    if ( Rest_Of_Maybe_Bit_Or_Exp_() ) {
+      while ( Match_( AND ) ) {
+        if ( !Maybe_Bit_Or_Exp_ )
+          Error_();
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Rest_Of_Maybe_Logical_And_Exp_()
   // * maybe_bit_OR_exp : maybe_bit_ex_OR_exp { '|' maybe_bit_ex_OR_exp }
-  bool Maybe_bit_Or_Exp_() {
-    // TODO
+  bool Maybe_Bit_Or_Exp_() {
+    if ( Maybe_Bit_Ex_Or_Exp_() ) {
+      while ( Match_( VBAR ) ) {
+        if ( !Maybe_Bit_Ex_Or_Exp_ ) 
+          Error_();
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Maybe_bit_Or_Exp_()
   // * rest_of_maybe_bit_OR_exp : rest_of_maybe_bit_ex_OR_exp { '|' maybe_bit_ex_OR_exp }
   bool Rest_Of_Maybe_Bit_Or_Exp_() {
-    // TODO
+    if ( Rest_Of_Maybe_Bit_Ex_Or_Exp_() ) {
+      while( Match_( VBAR ) ) {
+        if ( !Maybe_Bit_Ex_Or_Exp_() )
+          Error_();
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Rest_Of_Maybe_Bit_Or_Exp_()
   // * maybe_bit_ex_OR_exp : maybe_bit_AND_exp { '^' maybe_bit_AND_exp }
   bool Maybe_Bit_Ex_Or_Exp_() {
-    // TODO
+    if ( Maybe_Bit_And_Exp_() ) {
+      while ( Match_( CIRCUMFLEX ) ) {
+        if ( !Maybe_Bit_And_Exp_() )
+          Error_();
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Maybe_Bit_Ex_Or_Exp_()
   // * rest_of_maybe_bit_ex_OR_exp : rest_of_maybe_bit_AND_exp { '^' maybe_bit_AND_exp }
   bool Rest_Of_Maybe_Bit_Ex_Or_Exp_() {
-    // TODO
+    if ( Rest_Of_Maybe_Bit_And_Exp_() ) {
+      while ( Match_( CIRCUMFLEX ) ) {
+        if ( !Maybe_Bit_And_Exp_() )
+          Error_();
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Rest_Of_Maybe_Bit_Ex_Or_Exp_()
   // * maybe_bit_AND_exp : maybe_equality_exp { '&' maybe_equality_exp }
   bool Maybe_Bit_And_Exp_() {
-    // TODO
+    if ( Maybe_Equality_Exp_() ) {
+      while ( Match_( AMPER ) ) {
+        if ( !Maybe_Equality_Exp_() )
+          Error_();
+      } // while
+      
+      return true;
+    } // if
+    else return false;
   } // Maybe_Bit_And_Exp_()
   // * rest_of_maybe_bit_AND_exp : rest_of_maybe_equality_exp { '&' maybe_equality_exp }
   bool Rest_Of_Maybe_Bit_And_Exp_() {
-    // TODO
+    if ( Rest_Of_Maybe_Equality_Exp_() ) {
+      while ( Match_( AMPER ) )  {
+        if ( !Maybe_Equality_Exp_() )
+          Error_();
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Rest_Of_Maybe_Bit_And_Exp_()
   // * maybe_equality_exp : maybe_relational_exp 
   // *                      { ( EQ | NEQ ) maybe_relational_exp}
   bool Maybe_Equality_Exp_() {
-    // TODO
+    if ( Maybe_Relational_Exp_() ) {
+      while ( Match_( EQ ) || Match_( NEQ ) ) {
+        if ( Maybe_Relational_Exp_() ) {
+          // TODO
+        } // if
+        else Error_();
+
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Maybe_Equality_Exp_()
   // * rest_of_maybe_equality_exp : rest_of_maybe_relational_exp 
   // *                              { ( EQ | NEQ ) maybe_relational_exp }
   bool Rest_Of_Maybe_Equality_Exp_() {
-    // TODO
+    if ( Rest_Of_Maybe_Relational_Exp_() ) {
+      while ( Match_( EQ ) || Match_( NEQ ) ) {
+        if ( Maybe_Relational_Exp_() ) {
+          // TODO
+        } // if
+        else Error_();
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Rest_Of_Maybe_Equality_Exp_()
   // * maybe_relational_exp : maybe_shift_exp 
   // *                        { ( '<' | '>' | LE | GE ) maybe_shift_exp }
   bool Maybe_Relational_Exp_() {
-    // TODO
+    if ( Maybe_Shift_Exp_() ) {
+      while ( Match_( LESS ) || Match_( GREATER ) || Match_( LE ) || Match_( GE ) ) {
+        if ( Maybe_Shift_Exp_() ) {
+          // TODO 
+        } // if
+        else Error_();
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Maybe_Relational_Exp_()
   // * rest_of_maybe_relational_exp : rest_of_maybe_shift_exp 
   // *                                { ( '<' | '>' | LE | GE ) maybe_shift_exp }
   bool Rest_Of_Maybe_Relational_Exp_() {
-    // TODO
+    if ( Rest_Of_Maybe_Shift_Exp_() ) {
+      while ( Match_( LESS ) || Match_( GREATER ) || Match_( LE ) || Match_( GE ) ) {
+        if ( Maybe_Shift_Exp_() ) {
+          // TODO 
+        } // if
+        else Error_();
+      } // while
+
+      return true;
+    } // if
+    else return false;
   } // Rest_Of_Maybe_Relational_Exp_()
 // * maybe_shift_exp : maybe_additive_exp { ( LS | RS ) maybe_additive_exp }
   bool Maybe_Shift_Exp_() {
-    // TODO
+    if ( Maybe_Additive_Exp_() ) {
+      while ( Match_( LS ) || Match_( RS ) ) {
+        if ( Maybe_Additive_Exp_() ) {
+          // TODO
+        } // if
+        else Error_();
+      } // while
+
+      return true;
+    } //if
+    else return false;
   } // Maybe_Shift_Exp_()
 // * rest_of_maybe_shift_exp : rest_of_maybe_additive_exp { ( LS | RS ) maybe_additive_exp }
   bool Rest_Of_Maybe_Shift_Exp_() {
-    // TODO
+    if ( Rest_Of_Maybe_Additive_Exp_() ) {
+      while ( Match_( LS ) || Match_( RS ) ) {
+        if ( Maybe_Additive_Exp_() ) {
+          // TODO
+        } // if
+        else Error_();
+      } // while
+
+      return true;
+    } //if
+    else return false;
   } // Rest_Of_Maybe_Shift_Exp_()
 // * maybe_additive_exp : maybe_mult_exp { ( '+' | '-' ) maybe_mult_exp }
   bool Maybe_Additive_Exp_() {
-    // TODO
+    if ( Maybe_Mult_Exp_() ) {
+      while ( Match_( PLUS) || Match_( MINUS ) ) {
+        if ( Maybe_Mult_Exp_() ) {
+          // TODO
+        } // if
+        else Error_();
+      }  // while
+
+      return true;
+    } // if
+    else return false;
   } // Maybe_Additive_Exp_()
 // * rest_of_maybe_additive_exp : rest_of_maybe_mult_exp { ( '+' | '-' ) maybe_mult_exp }
   bool Rest_Of_Maybe_Additive_Exp_() {
-    // TODO
+    if ( Rest_Of_Maybe_Mult_Exp_() ) {
+      while ( Match_( PLUS) || Match_( MINUS ) ) {
+        if ( Maybe_Mult_Exp_() ) {
+          // TODO
+        } // if
+        else Error_();
+      }  // while
+
+      return true;
+    } // if
+    else return false;   // TODO
   } // Rest_Of_Maybe_Additive_Exp_()
 // * maybe_mult_exp : unary_exp rest_of_maybe_mult_exp
   bool Maybe_Mult_Exp_() {
-    // TODO
+    if ( Unary_Exp_() ) {
+      if ( Rest_Of_Maybe_Mult_Exp_() ) {
+        // TODO
+      } // if
+      else Error_();
+    } // if
+    else return false;
   } // Maybe_Mult_Exp_()
 // * rest_of_maybe_mult_exp : { ( '*' | '/' | '%' ) unary_exp }  /* could be empty ! */
   bool Rest_Of_Maybe_Mult_Exp_() {
-    // TODO
+    while ( Match_( STAR ) || Match_( SLASH ) || Match_( PERCENT ) ) {
+      if ( Unary_Exp_() ) {
+        // TODO
+      } // if
+      else Error_();
+    } // while
+
+    return true;
   } // Rest_Of_Maybe_Mult_Exp_()
 // * unary_exp : sign { sign } signed_unary_exp
 // *           | unsigned_unary_exp
 // *           | ( PP | MM ) Identifier [ '[' expression ']' ]
   bool Unary_Exp_() {
-    // TODO
+    if ( Sign_() ) {
+      while ( Sign_() ) {
+        // TODO
+      } // while
+
+      if ( Signed_Unary_Exp_() ) {
+        // TODO
+        return true;
+      } // if
+      else Error_();
+    } // if
+    else if ( Unsigned_Unary_Exp_() ) {
+      // TODO
+      return true;
+    } // else if
+    else if ( Match_( PP ) || Match_( MM ) ) {
+      if ( Match_( IDENTIFER ) ) {
+        if ( Match_( LSQB ) ) {
+          if ( Exp_() ) {
+            if ( !Match_( RSQB ) )
+              Error_();
+          } // if
+          else Error_();
+        } // if
+        return true;
+      } // if
+      else Error_();
+    } // else if
+    else return false;
   } // Unary_Exp_()
 // * signed_unary_exp : Identifier [ '(' [ actual_parameter_list ] ')' 
 // *                               |
@@ -584,7 +1254,37 @@ private:
 // *                  | Constant 
 // *                  | '(' expression ')'
   bool Signed_Unary_Exp_() {
-    // TODO
+    if ( Match_( IDENTIFER ) ) {
+      if ( Match_( LPAR ) ) {
+        if ( Actual_Parameter_List_() ) {
+          // TODO
+        } // if
+
+        if ( !Match_( RPAR ) )
+          Error_();
+      } // if
+      else if ( Match_( LSQB ) ) {
+        if ( Exp_() ) {
+          if ( !Match_( RSQB ) )
+            Error_();
+        } // if
+      }
+
+      return true;
+    } // i
+    else if ( Match_( CONSTANT ) ) {
+      return true;
+    } // else if
+    else if ( Match_( LPAR ) ) {
+      if ( Exp_() ) {
+        if ( Match_( RPAR ) )
+          return true;
+        else
+          Error_();
+      } // if
+      else Error_();
+    } // else if
+    else return false;
   } // Signed_Unary_Exp_()
 // * unsigned_unary_exp : Identifier [ '(' [ actual_parameter_list ] ')' 
 // *                                 |
@@ -593,16 +1293,67 @@ private:
 // *                    | Constant 
 // *                    | '(' expression ')'
   bool Unsigned_Unary_Exp_() {
-    // TODO
+    if ( Match_( IDENTIFER ) ) {
+      if ( Match_( LPAR ) ) {
+        if ( Actual_Parameter_List_() ) {
+          // TODO
+        } // if
+        
+        if ( !Match_( RPAR ) )
+          Error_();
+        return true;
+      } // if
+      else {
+        if ( Match_( LSQB ) ) {
+          if ( Exp_() ) {
+            if ( !Match_(RSQB) )
+              Error_();
+          
+          } // if
+        } // if
+
+        if ( Match_( PP ) || Match_( MM ) ) {
+          // TODO
+        } // if
+
+      } // else
+
+      return true;
+    } // if
+    else if ( Match_( CONSTANT ) ) {
+      return true;
+    } // else if
+    else if ( Match_( LPAR ) ) {
+      if ( Exp_() ) {
+        if ( Match_( RPAR ) )
+          return true;
+        else
+          Error_();
+      } // if
+      else Error_();
+    } // else if
+    else return false;
   } // UNsigned_Unary_Exp_()
-public:
-  void Error() {
+
+  void Error_() {
     string msg = mScn_.Line_String();
     msg += "unexpected token : '";
     msg += mScn_.Get_Token().Name();
     msg += "'";
     throw msg;
   } // Error()
+public:
+  Parser() {
+    Reset();
+  } // Parser()
+
+  void Reset() {
+    if ( mToken_ != NULL )
+      delete mToken_;
+    mToken_ = NULL;
+    mScn_.Reset();
+  } // Reset()
+
 
   vector<InterCode> Parse() {
     // TODO
