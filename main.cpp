@@ -356,6 +356,21 @@ private:
     else return "";
   } // Back_Slash_()
 
+  int Reserved_Word_( string str ) {
+    if ( str == "int" ) return INT;
+    else if ( str == "float" ) return FLOAT;
+    else if ( str == "char" ) return CHAR;
+    else if ( str == "bool" ) return BOOL;
+    else if ( str == "string" ) return STRING;
+    else if ( str == "void" ) return VOID;
+    else if ( str == "if" ) return IF;
+    else if ( str == "else" ) return ELSE;
+    else if ( str == "while" ) return WHILE;
+    else if ( str == "do" ) return DO;
+    else if ( str == "return" ) return RETURN;
+    else return IDENTIFER;
+  } // Reserved_Word_()
+
 public:
   Scanner() {
     Reset();
@@ -463,6 +478,9 @@ public:
             Reset();
             throw error_msg;
           } // if
+          else if ( state == IDENTIFER ) {
+            *mNext_Token = Token( Reserved_Word_( token_name ), token_name, mCurrent_Line_ );
+          } // else if
           else 
             *mNext_Token = Token( state, token_name, mCurrent_Line_ );
           stop = true;
