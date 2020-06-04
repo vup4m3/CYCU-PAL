@@ -375,13 +375,18 @@ public:
   Scanner() {
     Reset();
   } // Scanner()
-
+  // * Reset for error happened
   void Reset() {
     if ( mNext_Token != NULL )
       delete mNext_Token;
     mNext_Token = NULL;
     mLine_Input_.clear();
+    mCurrent_Line_ = 0;
   } // Reset()
+  // * Set Current Line to 0 for new instruction
+  void Zero() {
+    mCurrent_Line_ = 0;
+  } // Zero()
 
   Token Peek_Token() {
     int type, state = 0;
