@@ -1,3 +1,4 @@
+// TODO EOF process 
 # include <string>
 # include <vector>
 # include <iostream>
@@ -520,10 +521,45 @@ struct InterCode {
   float parameter;
 };
 
+class PrettyPrint {
+private:
+  int mType;
+  string mName;
+public:
+  PrettyPrint() {
+    mType = 0;
+    mName = "";
+  } // PrettyPrint()
+  // * type == 0, Definition
+  // * type == 1, Statement executed
+  PrettyPrint( int type, string name ) {
+    mType = type;
+    mName = name;
+  } // PrettyPrint()
+  
+  void Print() {
+    if ( mType == 0 ) {
+      cout << "Definition of ";
+      cout << mName;
+      cout << " entered ..." << endl;
+    } // if
+    else if ( mType == 1 ) {
+      cout << "Statement executed ...";
+    } // else if 
+    else {
+      cout << "No other case !!" << endl;
+    } // else 
+    
+  } // Print
+};
+
 class Parser {
+  // TODO Record Function code
 private:
   Scanner mScn_;
   Token *mToken_;
+  PrettyPrint mPretty_Print_;
+
   bool Match_( int type ) {
     if ( mScn_.Peek_Token().Token_Type() == type ) {
       *mToken_ = mScn_.Get_Token();
@@ -537,7 +573,8 @@ private:
       // TODO
     } // if
     else if ( Statement_() ) {
-      // TODO
+      // TODO 
+      mPretty_Print_ = PrettyPrint( 1, "" );
     } // else if
     else return false;
 
