@@ -161,6 +161,7 @@ private:
     throw msg;
   } // Error_()
 public:
+  IdTable();
   // * Load address of Identifer by token, if token undefine throw error.
   int Load_Addr( Token token ) {
     string str = token.Name();
@@ -186,37 +187,34 @@ public:
 class Data {
 private:
   vector<Variable> mData_;
+  IdTable mGlob_Table_;
 public:
   Data() {
     mData_.clear();
-  } // Data()
-  // * Make a Data frame for function
-  Data( vector<Variable> arg,  int num_of_var ) {
-    for ( int i = 0; i < num_of_var; i++) {
-      if ( arg.size() > i )
-        mData_.push_back( arg[i] );
-      else {
-        Variable var;
-        mData_.push_back( var );
-      } // else
-
-    } // for
-
   } // Data()
   // * Reset Data frame
   void Reset() {
     mData_.clear();
   } // Reset()
-  // * Load Variable from Data by address
-  Variable Load( int addr ) {
+  // * ( Token token ), Load Addr from Data by Token
+  int Load_Addr( Token token ) {
+    return mGlob_Table_.Load_Addr( token );
+  } // Load_Addr()
+  // * (int addr), Load Variable by addr
+  Variable Load_Var( int addr ) {
     return mData_[addr];
-  } // Load()
-  // * New Variable in Data
-  int New() {
+  } // Load_Var()
+  // * ( Token token, bool global ). Define new identifer 
+  void Define( Token token, bool global ) {
     Variable var;
     mData_.push_back( var );
-    return mData_.size();
-  } // New()
+    Identifer id = Identifer( token.Name(), mData_.size() );
+    if ( global ) 
+      mGlob_Table_.Define( id, 0 );
+    else {
+      // TODO Region Variable
+    } // else
+  } // Define()
   // * Store Variable in Data by address
   void Store( Variable var, int addr ) {
     mData_[addr] = var;
