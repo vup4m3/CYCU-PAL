@@ -62,23 +62,20 @@ enum Type {
   COLON,       // :
   BACKSLASH    
 };
-// * Variable contain Type, Value(int, float, char), String(For string)
+// * ( int type, float value )
 class Variable {
 private:
   int mType_;
   float mValue_;
-  string mStr_;
 public:
   Variable() {
     mType_ = 0;
     mValue_ = 0;
-    mStr_ = "";
   } // Variable()
 
-  Variable( int type, float value, string str ) {
+  Variable( int type, float value ) {
     mType_ = type;
     mValue_ = value;
-    mStr_ = str;
   } // Variable()
 
   int Type() {
@@ -89,45 +86,67 @@ public:
     return mValue_;
   } // Value()
 
-  string Str() {
-    return mStr_;
-  } // Str()
+};
+
+class Constant {
+private:
+  string mName_;
+  int mType_;
+  vector<Variable> mVars_;
+public:
+  Constant() {
+    mName_ = "";
+    mType_ = UNDEFINE;
+    Variable var; // empty var
+    mVars_.push_back( var );
+  } // Constant()
+  
+  Constant( int type, float value, string str ) {
+    mType_ = type;
+    mName_ = str;
+    Variable var;
+    if ( type == INT || type == FLOAT || type == CHAR ) {
+      var = Variable( type, value );
+      mVars_.push_back( var );
+    } // if
+    else {
+      for ( int i = 0; i < str.size(); i++ ) {
+        var = Variable( CHAR, str[i] );
+        mVars_.push_back( var );
+      } // for
+
+    } // else
+      
+  } // Constant()
+
+  string Name() {
+    return mName_;
+  } // Name()
+
+  int Type() {
+    return mType_;
+  } // Type()
 
 };
 // * Pool of Constant
 class ConstantPool {
 private:
-  vector<Variable> mPool_;
+  vector<Constant> mPool_;
 public:
   int Get_Addr( Token token ) {
-    int value = 0, type = token.Cons_Type();
-    string str = token.Name();
-    if ( type == INT || type == FLOAT )
-      value = atof( str.c_str() );
-    else if ( type == CHAR )
-      value = str[0];
-    else value = 0;
-
-    if ( type != STRING )
-      str = "";
-    int i = 0;
-    while ( i < mPool_.size() ) {
-      if ( mPool_[i].Type() == type ) {
-        if ( type == STRING && mPool_[i].Str() == str )
-          return i;
-        else if ( ( type == INT || type == FLOAT || type == CHAR ) && mPool_[i].Value() == value )
-          return i;
-        
+    for ( int i = 0; i < mPool_.size(); i++ ) {
+      if ( mPool_[i].Name() == token.Name() ) {
+        return i;
       } // if
-      
-      i++;
-    } // while()
+  
+    } // for
 
-    Variable var = Variable( type, value , str );
-    mPool_.push_back( var );
+    Constant cons = Constant( token.Cons_Type(), atof( token.Name().c_str() ), token.Name() );
+    mPool_.push_back( cons );
+    return mPool_.size();
   } // Get_Addr()
 
-  Variable Load( int addr ) {
+  Constant Load( int addr ) {
     return mPool_[addr];
   } // Load()
 };
@@ -205,10 +224,12 @@ public:
     return mData_[addr];
   } // Load_Var()
   // * ( Token token, bool global ). Define new identifer 
-  void Define( Token token, bool global ) {
+  void Define( Token token, bool global, int array_number ) {
     Variable var;
-    mData_.push_back( var );
-    Identifer id = Identifer( token.Name(), mData_.size() );
+    Identifer id = Identifer( token.Name(), mData_.size() + 1 );
+    for ( int i = 0; i < array_number; i++ )
+      mData_.push_back( var );
+
     if ( global ) 
       mGlob_Table_.Define( id, 0 );
     else {
