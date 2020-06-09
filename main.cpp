@@ -64,6 +64,62 @@ enum Type {
   // * Operater
   DONE
 };
+
+class Token {
+private:
+  int mToken_Type_;
+  int mConstant_Type_;
+  string mName_;
+  int mLine_;
+
+public:
+  Token() {
+    mToken_Type_ = 0;
+    mConstant_Type_ = UNDEFINE;
+    mName_ = "";
+    mLine_ = 0;
+  } // Token()
+
+  Token( int type, string name, int line ) {
+    mName_ = name;
+    mConstant_Type_ = 0;
+    mLine_ = line;
+    if ( type == INT_CONS || type == STR_CONS || type == CHAR_CONS || type == FLOAT_CONS ) {
+      if ( type == INT_CONS )
+        mConstant_Type_ = INT;
+      else if ( type == FLOAT_CONS )
+        mConstant_Type_ = FLOAT;
+      else if ( type == CHAR_CONS )
+        mConstant_Type_ = CHAR;
+      else mConstant_Type_ = STR_CONS;
+
+      mToken_Type_ = CONSTANT;
+    } // if
+    else mToken_Type_ = type;
+
+  } // Token()
+
+  int Token_Type() {
+    return mToken_Type_;
+  } // Token_Type()
+
+  int Cons_Type() {
+    return mConstant_Type_;
+  } // Cons_Type()
+
+  string Name() {
+    return mName_;
+  } // Name()
+
+  string Line() {
+    string str = "Line ";
+    str += to_string( mLine_ );
+    str += " :";
+    return str;
+  } // Line()
+
+};
+
 // * ( int type, float value )
 class Variable {
 private:
@@ -244,72 +300,23 @@ public:
   } // Store()
 };
 
-class Token {
-private:
-  int mToken_Type_;
-  int mConstant_Type_;
-  string mName_;
-  int mLine_;
 
-public:
-  Token( int type, string name, int line ) {
-    mName_ = name;
-    mConstant_Type_ = 0;
-    mLine_ = line;
-    if ( type == INT_CONS || type == STR_CONS || type == CHAR_CONS || type == FLOAT_CONS ) {
-      if ( type == INT_CONS )
-        mConstant_Type_ = INT;
-      else if ( type == FLOAT_CONS )
-        mConstant_Type_ = FLOAT;
-      else if ( type == CHAR_CONS )
-        mConstant_Type_ = CHAR;
-      else mConstant_Type_ = STR_CONS;
-
-      mToken_Type_ = CONSTANT;
-    } // if
-    else mToken_Type_ = type;
-
-  } // Token()
-
-  int Token_Type() {
-    return mToken_Type_;
-  } // Token_Type()
-
-  int Cons_Type() {
-    return mConstant_Type_;
-  } // Cons_Type()
-
-  string Name() {
-    return mName_;
-  } // Name()
-
-  string Line() {
-    string str = "Line ";
-    str += to_string( mLine_ );
-    str += " :";
-    return str;
-  } // Line()
-
-};
 
 class Scanner {
 private:
-  Token *mNext_Token;
+  Token mNext_Token;
   vector<char> mLine_Input_;
   int mCurrent_Line_;
 
   char Peek_Char_() {
-    char ch;
+    char ch = '\0';
     if ( mLine_Input_.empty() ) {
-      cin.get( ch );
-      while ( ch != '\n' && !cin.eof() ) {
-        mLine_Input_.push_back( ch );
+      while ( !cin.eof() && ch != '\n' ) {
         cin.get( ch );
+        mLine_Input_.push_back( ch );
       } // while
 
-      if ( ch == '\n' )
-        mLine_Input_.push_back( ch );
-      else mLine_Input_.push_back( '\0' );
+      if ( ch == '\0' ) mLine_Input_.push_back( '\0' );
     } // if
 
     return mLine_Input_[0];
@@ -399,11 +406,9 @@ public:
   } // Scanner()
   // * Reset for error happened
   void Reset() {
-    if ( mNext_Token != NULL )
-      delete mNext_Token;
-    mNext_Token = NULL;
+    mNext_Token = Token();
     mLine_Input_.clear();
-    mCurrent_Line_ = 0;
+    mCurrent_Line_ = 1;
   } // Reset()
   // * Set Current Line to 0 for new instruction
   void Zero() {
@@ -414,7 +419,7 @@ public:
     int type, state = 0;
     bool stop = false, interupt = false;
     string token_name = "";
-    if ( mNext_Token == NULL ) {
+    if ( mNext_Token.Token_Type() == 0 ) {
       while ( !stop ) {
         if ( state == 0 ) {
           type = Input_Type_( Peek_Char_() );
@@ -426,8 +431,8 @@ public:
             state = IDENTIFER;
           else if ( Is_One_Char_Token_Type_( type ) ) {
             token_name = Get_Char_();
-            *mNext_Token = Token( type, token_name, mCurrent_Line_ );
-            return *mNext_Token;
+            mNext_Token = Token( type, token_name, mCurrent_Line_ );
+            return mNext_Token;
           } // else if 
           else if ( type == QUOT || type == QUOTQUOT ) {
             Get_Char_();
@@ -506,10 +511,11 @@ public:
             throw error_msg;
           } // if
           else if ( state == IDENTIFER ) {
-            *mNext_Token = Token( Reserved_Word_( token_name ), token_name, mCurrent_Line_ );
+            mNext_Token = Token( Reserved_Word_( token_name ), token_name, mCurrent_Line_ );
           } // else if
           else 
-            *mNext_Token = Token( state, token_name, mCurrent_Line_ );
+            mNext_Token = Token( state, token_name, mCurrent_Line_ );
+         
           stop = true;
         } // else 
 
@@ -517,13 +523,12 @@ public:
 
     } // if
 
-    return *mNext_Token;
+    return mNext_Token;
   } // Peek_Token()
 
   Token Get_Token() {
     Token token = Peek_Token();
-    delete mNext_Token;
-    mNext_Token = NULL;
+    mNext_Token = Token();
     return token;
   } // Get_Token()
 
@@ -609,13 +614,14 @@ class Parser {
   // TODO Record Function code
 private:
   Scanner mScn_;
-  Token *mToken_;
+  Token mToken_;
   PrettyPrint mPretty_Print_;
   vector<InterCode> mCodes_;
+  bool mDone_;
 
   bool Match_( int type ) {
     if ( mScn_.Peek_Token().Token_Type() == type ) {
-      *mToken_ = mScn_.Get_Token();
+      mToken_ = mScn_.Get_Token();
       return true;
     }
     else return false;
@@ -809,7 +815,8 @@ private:
     } // if
     else if ( Exp_() ) {
       if ( Match_( SEMI ) ) {
-        // TODO
+        if ( mDone_ ) 
+          throw true;
         return true;
       } // if
       else Error_();
@@ -952,7 +959,7 @@ private:
 
     } // else 
     else if ( Match_( CONSTANT ) || Match_( LPAR ) ) {
-      if( mToken_->Token_Type() == LPAR ) {
+      if( mToken_.Token_Type() == LPAR ) {
         if ( Exp_() ) {
           if ( !Match_( RPAR ) ) 
             Error_();
@@ -977,7 +984,7 @@ private:
   // *                                        )
   // *                                      | '(' [ actual_parameter_list ] ')' romce_and_romloe
   bool Rest_Of_Id_Started_Basic_Exp_() {
-    string id = mToken_->Name();
+    string id = mToken_.Name();
     if ( Match_( LPAR ) ) {
       if ( Actual_Parameter_List_() ) {
         // TODO
@@ -985,8 +992,7 @@ private:
       if ( Match_( RPAR ) ) {
         if ( Romce_And_Romloe_() ) {
           if ( id == "Done" ) {
-            InterCode code = InterCode( 0, DONE, 0 );
-            mCodes_.push_back( code );
+            mDone_ = true;
           } // if
 
           return true;
@@ -1110,7 +1116,7 @@ private:
   bool Rest_Of_Maybe_Logical_And_Exp_() {
     if ( Rest_Of_Maybe_Bit_Or_Exp_() ) {
       while ( Match_( AND ) ) {
-        if ( !Maybe_Bit_Or_Exp_ )
+        if ( !Maybe_Bit_Or_Exp_() )
           Error_();
       } // while
 
@@ -1122,7 +1128,7 @@ private:
   bool Maybe_Bit_Or_Exp_() {
     if ( Maybe_Bit_Ex_Or_Exp_() ) {
       while ( Match_( VBAR ) ) {
-        if ( !Maybe_Bit_Ex_Or_Exp_ ) 
+        if ( !Maybe_Bit_Ex_Or_Exp_() ) 
           Error_();
       } // while
 
@@ -1459,13 +1465,12 @@ private:
   } // Error()
 public:
   Parser() {
+    mDone_ = false;
     Reset();
   } // Parser()
 
   void Reset() {
-    if ( mToken_ != NULL )
-      delete mToken_;
-    mToken_ = NULL;
+    mToken_ = Token();
     mScn_.Reset();
   } // Reset()
 
@@ -1481,9 +1486,13 @@ public:
 
 class Runner {
 private:
-  int mPc,mAx;
+  int mPc;
   vector <InterCode> mCodes_;
 public:
+  Runner() {
+    mPc = 0;
+  } // Runner()
+  // TODO 不需要bool了
   bool Eval( vector<InterCode> new_codes ) {
     InterCode cur_line;
     mCodes_.insert( mCodes_.end(),  new_codes.begin(), new_codes.end() );
@@ -1512,6 +1521,9 @@ int main() {
     } // try
     catch( string error_info ) {
       cout << error_info << endl;
+    } // catch
+    catch( bool stop ) { // * Catch Done();
+      done = true;
     } // catch
   } while ( !done ); // TODO solve the problem of EOF
   cout << "Our-C exited ..." << endl;
