@@ -60,7 +60,9 @@ enum Type {
   COMMA,       // ,
   QUE,         // ?
   COLON,       // :
-  BACKSLASH    
+  BACKSLASH,
+  // * Operater
+  DONE
 };
 // * ( int type, float value )
 class Variable {
@@ -534,10 +536,41 @@ public:
 
 };
 
-struct InterCode {
-  int type;
-  int operater;
-  float parameter;
+
+
+class InterCode {
+private:
+  int mType_;
+  int mOperater_;
+  int mParameter_;
+public:
+  InterCode() {
+    Reset();
+  } // InterCode()
+
+  InterCode( int type, int op, int par ) {
+    mType_ = type;
+    mOperater_ = op;
+    mParameter_ = par;
+  } // InterCode()
+
+  void Reset() {
+    mType_ = UNDEFINE;
+    mOperater_ = 0;
+    mParameter_ = 0;
+  } // Reset()
+
+  int Type() {
+    return mType_;
+  } // Type()
+
+  int Operater() {
+    return mOperater_;
+  } // Operater()
+
+  int Parameter() {
+    return mParameter_;
+  } // Parameter()
 };
 
 class PrettyPrint {
@@ -578,6 +611,7 @@ private:
   Scanner mScn_;
   Token *mToken_;
   PrettyPrint mPretty_Print_;
+  vector<InterCode> mCodes_;
 
   bool Match_( int type ) {
     if ( mScn_.Peek_Token().Token_Type() == type ) {
@@ -886,7 +920,7 @@ private:
   // *                  | ( Constant | '(' expression ')' ) romce_and_romloe
   bool Basic_Exp_() {
     if ( Match_( IDENTIFER ) ) {
-      if ( Rest_Of_Id_Stated_Basic_Exp_() )  {
+      if ( Rest_Of_Id_Started_Basic_Exp_() )  {
         // TODO 
         return true;
       } // if
@@ -942,13 +976,19 @@ private:
   // *                                          [ PP | MM ] romce_and_romloe 
   // *                                        )
   // *                                      | '(' [ actual_parameter_list ] ')' romce_and_romloe
-  bool Rest_Of_Id_Stated_Basic_Exp_() {
+  bool Rest_Of_Id_Started_Basic_Exp_() {
+    string id = mToken_->Name();
     if ( Match_( LPAR ) ) {
-      if( Actual_Parameter_List_() ) {
+      if ( Actual_Parameter_List_() ) {
         // TODO
       } // if
       if ( Match_( RPAR ) ) {
         if ( Romce_And_Romloe_() ) {
+          if ( id == "Done" ) {
+            InterCode code = InterCode( 0, DONE, 0 );
+            mCodes_.push_back( code );
+          } // if
+
           return true;
         } // if
         else Error_();
@@ -958,12 +998,10 @@ private:
       
     } // if
     else {
-      bool front = false;
       if ( Match_( LSQB ) ) {
         if ( Exp_() ) {
           if ( !Match_( RSQB ) ) 
             Error_();
-          else front = true;
         
         } // if
       } // if
@@ -980,8 +1018,6 @@ private:
         } // if
         else Error_();
       } // else if
-      else if ( front == true )
-        Error_();
       else return false;
 
     } // else
@@ -1435,16 +1471,30 @@ public:
 
 
   vector<InterCode> Parse() {
-    // TODO
+    mCodes_.clear();
+    if ( User_Input_() )
+      return mCodes_;
+    else Error_();
+      
   } // Parse()
 };
 
 class Runner {
 private:
   int mPc,mAx;
+  vector <InterCode> mCodes_;
 public:
   bool Eval( vector<InterCode> new_codes ) {
-    // TODO
+    InterCode cur_line;
+    mCodes_.insert( mCodes_.end(),  new_codes.begin(), new_codes.end() );
+    while ( mPc < mCodes_.size() ) {
+      cur_line = mCodes_[mPc];
+      if ( cur_line.Operater() == DONE )
+        return true;
+
+    } // while
+
+    return false;
   } // Eval()
 };
 
