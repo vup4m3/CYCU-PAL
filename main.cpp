@@ -649,11 +649,12 @@ private:
     } // if
     else {
       is_new = gData.Define( global, type, id, array );
-      if ( global ) mPretty_Print_.Definition( is_new,false, id );
+      if ( global ) mPretty_Print_.Definition( is_new, false, id );
     } // else
 
     while ( Match_( COMMA ) ) {
       if ( Match_( IDENTIFER ) ) {
+        id = mToken_.Name();
         if ( Match_( LSQB ) ) {
           if ( Match_( CONSTANT ) ) {
             array = atoi( mToken_.Name().c_str() );
@@ -667,7 +668,13 @@ private:
           else Error_();
 
         } // if
-      } // while
+        else {
+          is_new = gData.Define( global, type, id, array );
+          if ( global ) mPretty_Print_.Definition( is_new, false, id );
+        } // else
+
+      } // if
+      else Error_();
 
     } // while
     if ( Match_( SEMI ) )
