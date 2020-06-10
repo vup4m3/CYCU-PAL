@@ -48,12 +48,10 @@ void F1() {
 
 
 int main() {
-  int a = 10;
   string str = "abc";
-  str += to_string(a);
-  cout << str << endl;
   char a[10] = "F1";
-  
+  a + 2 ;
+  cout << a + 2 << endl;
 }
 enum Type {
   IDENTIFIER,  
