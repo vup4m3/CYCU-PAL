@@ -180,11 +180,13 @@ private:
   vector<float> mData_;
   // * Return the address we alloc
   int Alloc_Data_( int num ) {
-    int i = 0, addr = mData_.size();
-    do {
-      mData_.push_back( 0 );
-      i++;
-    } while ( i < num );
+    int i = 0, addr = -1;
+    if ( num > 0 ) {
+      addr = mData_.size();
+      for ( int i = 0; i < num; i++ ) 
+        mData_.push_back( 0 );
+
+    } // if
 
     return addr;
   } // Alloc_Data_()
@@ -192,7 +194,7 @@ public:
   // * New Definition return true, Definition return false
   bool Define( bool global,  int type, string name, int array ) {
     vector<VarId> *table;
-    int addr, index = 0;
+    int addr = -1, index = 0;
     global ? table = &mGlobal_Var_Id_Table_ : table = & mRegion_Var_Id_Table_;
     addr = Alloc_Data_( array );
     VarId id( type, name, array, addr );
@@ -286,7 +288,8 @@ private:
   bool Is_One_Char_Token_Type_( int type ) {
     return type == LPAR || type == RPAR || type == LSQB || 
            type == LBRACE || type == RBRACE || type == SEMI ||
-           type == COMMA || type == QUE || type == COLON;
+           type == COMMA || type == QUE || type == COLON ||
+           type == RSQB;
   } // Is_One_Char_Token_Type_()
 
   string Back_Slash_() {
@@ -640,6 +643,7 @@ private:
         if ( Match_( RSQB ) ) {
           is_new = gData.Define( global, type, id, array );
           if ( global ) mPretty_Print_.Definition( is_new,false, id );
+
         } // if
         else Error_();
 
@@ -918,7 +922,8 @@ private:
   // *                  | ( Constant | '(' expression ')' ) romce_and_romloe
   bool Basic_Exp_() {
     if ( Match_( IDENTIFER ) ) {
-      if ( Rest_Of_Id_Started_Basic_Exp_() )  {
+      string id = mToken_.Name();
+      if ( Rest_Of_Id_Started_Basic_Exp_( id ) )  {
         // TODO 
         return true;
       } // if
@@ -974,8 +979,7 @@ private:
   // *                                          [ PP | MM ] romce_and_romloe 
   // *                                        )
   // *                                      | '(' [ actual_parameter_list ] ')' romce_and_romloe
-  bool Rest_Of_Id_Started_Basic_Exp_() {
-    string id = mToken_.Name();
+  bool Rest_Of_Id_Started_Basic_Exp_( string id ) {
     if ( Match_( LPAR ) ) {
       if ( Actual_Parameter_List_() ) {
         // TODO
@@ -1015,6 +1019,9 @@ private:
         } // if
         else Error_();
       } // else if
+      else if ( Romce_And_Romloe_() ) {
+        return true;
+      } // else if 
       else return false;
 
     } // else
@@ -1052,7 +1059,7 @@ private:
     } //if
     else return false;
   } // Actual_Parameter_List_()
-  // * assignment_operator : '=' | TE | DE | RE | PE | ME
+  // * assignment_operator : '=' | TE (*=) | DE (/=) | RE (%=) | PE(+=) | ME(-=)
   bool Assignment_Op_() {
     return Match_( EQ ) || Match_( TE ) || Match_( RE ) || Match_( PE ) || Match_( ME );
   } // Assignment_Op_()
@@ -1380,7 +1387,8 @@ private:
           if ( !Match_( RSQB ) )
             Error_();
         } // if
-      }
+
+      } // else if
 
       return true;
     } // i
@@ -1406,6 +1414,7 @@ private:
 // *                    | '(' expression ')'
   bool Unsigned_Unary_Exp_() {
     if ( Match_( IDENTIFER ) ) {
+      string id = mToken_.Name();
       if ( Match_( LPAR ) ) {
         if ( Actual_Parameter_List_() ) {
           // TODO
@@ -1413,6 +1422,7 @@ private:
         
         if ( !Match_( RPAR ) )
           Error_();
+
         return true;
       } // if
       else {
@@ -1513,6 +1523,7 @@ int main() {
     } // try
     catch( string error_info ) {
       cout << error_info << endl;
+      parser.Reset();
     } // catch
     catch( bool stop ) { // * Catch Done();
       done = true;
