@@ -40,18 +40,9 @@ void F() {
   cout << a << endl;
 }
 
-int test = 1;
-
-void F1() {
-  test = 2;
-}
-
-
 int main() {
-  string str = "abc";
-  char a[10] = "F1";
-  a + 2 ;
-  cout << a + 2 << endl;
+  string a = "012";
+  cout << a.size() << endl;
 }
 enum Type {
   IDENTIFIER,  

@@ -58,12 +58,15 @@ enum Type {
   RS,          // >>
   LS,          // <<
   SEMI,        // ;
+  // ,
   COMMA,       // ,
   QUE,         // ?
   COLON,       // :
   BACKSLASH,
   // * Operater
 };
+
+Data gData;
 
 class Token {
 private:
@@ -91,7 +94,7 @@ public:
         mConstant_Type_ = FLOAT;
       else if ( type == CHAR_CONS )
         mConstant_Type_ = CHAR;
-      else mConstant_Type_ = STR_CONS;
+      else mConstant_Type_ = STRING;
 
       mToken_Type_ = CONSTANT;
     } // if
@@ -110,15 +113,16 @@ public:
   string Name() {
     return mName_;
   } // Name()
-
+  // * Return "Line 1 : "
   string Line() {
     string str = "Line ";
     str += to_string( mLine_ );
-    str += " :";
+    str += " : ";
     return str;
   } // Line()
 
 };
+
 
 // * ( int type, float value )
 class Variable {
@@ -173,10 +177,69 @@ public:
   } // Addr()
 };
 
+class FuncInfo {
+private:
+  int mType_;
+  string mName_;
+  vector<int> mType_List_;
+  int mAddr_;
+  int mVar_Num_;
+  vector<Token> mFunc_Code_;
+public:
+  FuncInfo( int type, string name, vector<int> type_list, int addr, int var_num, vector<Token> func_code ) {
+    mType_ = type;
+    mName_ = name;
+    mType_List_ = type_list;
+    mAddr_ = addr;
+    mVar_Num_ = var_num;
+    mFunc_Code_ = func_code;
+  } // FuncId()
+
+  int Type() {
+    return mType_;
+  } // Type()
+
+  string Name() {
+    return mName_;
+  } // Name()
+
+  int Addr() {
+    return mAddr_;
+  } // Addr()
+
+};
+
+class Constant {
+private:
+  int mType_;
+  float mValue_;
+
+public:
+  Constant() {
+    mType_ = UNDEFINE;
+    mValue_ = 0;
+  } // Constant()
+
+  Constant( Token token ) {
+    mType_ = token.Cons_Type();
+    if ( token.Cons_Type() == STRING ) {
+      
+    } // if
+    else
+      mValue_ = atof( token.Name().c_str() );
+
+  } // Constant()
+};
+
+class ConstantPool {
+private:
+}
+
 class Data {
 private:
   vector<VarId> mGlobal_Var_Id_Table_;
   vector<VarId> mRegion_Var_Id_Table_;
+  vector<FuncInfo> mFunc_Table_;
   vector<float> mData_;
   // * Return the address we alloc
   int Alloc_Data_( int num ) {
@@ -190,28 +253,33 @@ private:
 
     return addr;
   } // Alloc_Data_()
+
+  void Error_( Token token ) {
+    string msg = token.Line();
+    msg += "undefined identifier : '";
+    msg += token.Name();
+    msg += "'";
+    throw msg;
+  } // Error_()
+
 public:
   // * New Definition return true, Definition return false
-  bool Define( bool global,  int type, string name, int array ) {
+  bool Define_Var( bool global,  int type, string name, int array ) {
     vector<VarId> *table;
     int addr = -1, index = 0;
     global ? table = &mGlobal_Var_Id_Table_ : table = & mRegion_Var_Id_Table_;
-    addr = Alloc_Data_( array );
     VarId id( type, name, array, addr );
     do {
       if ( index == table->size() ) {
         table->push_back( id );
-
         return false;
       } // if
       else if ( table->at( index ).Name() == name ) {
         table->at( index ) = id;
-
         return true;
       } // else if
       else if ( table->at( index ).Name() < name ) {
         table->insert( table->begin() + index, id );
-
         return true;
       } // else if
 
@@ -219,6 +287,80 @@ public:
   
     return false;
   } // Define
+  // * If id defined, will return Id address and type.
+  int Get_Var_Addr( Token token, int &type ) {
+    string str = token.Name();
+    vector<VarId> *table = &mRegion_Var_Id_Table_;
+    vector<VarId>::iterator i;
+    do {
+      for ( i = table->begin(); i != table->end(); ++i ) {
+        if ( i->Name() == str ) {
+          type = i->Type();
+          return -1;
+        } // if
+      
+      } // for
+
+      table = &mGlobal_Var_Id_Table_;
+    } while ( i != mGlobal_Var_Id_Table_.end() );
+
+    Error_( token );
+  } // Get_Addr()
+
+  bool Define_Func( int type, string name, vector<int> type_list, int addr, int var_num, vector<Token> func_code ) {
+    FuncInfo id( type, name, type_list, addr, var_num, func_code );
+    int index = 0;
+    do {
+      if ( index == mFunc_Table_.size() ) {
+        mFunc_Table_.push_back( id );
+        return false;
+      } // if
+      else if ( mFunc_Table_[index].Name() == name ) {
+        mFunc_Table_[index] = id;
+        return true;
+      } // else if
+      else if ( mFunc_Table_[index].Name() < name ) {
+        mFunc_Table_.insert( mFunc_Table_.begin() + index, id );
+        return true;
+      } // else if
+  
+    } while ( index++ );
+
+    return false;
+  } // Define_Func()
+
+  int Get_Func_Info( Token token, int &type ) {
+    string name = token.Name();
+    if ( name == "ListAllVariables" ) 
+      return -1;
+    else if ( name == "ListAllFunctions" )
+      return -2;
+    else if ( name == "ListVariable" ) 
+      return -3;
+    else if ( name == "ListFunction" ) 
+      return -4;
+    else if ( name == "Done" )
+      return -5;
+    else {
+      for ( int i = 0; i < mFunc_Table_.size(); i++ ) 
+        if( mFunc_Table_[i].Name() == name )
+          return i;
+    } // else
+    
+    Error_( token );
+  } // Get_Func_Addr()
+
+  int Region_Table_End() {
+    return mRegion_Var_Id_Table_.size();
+  } // Region_Table_Start()
+
+  void Region_Id_Delete( int index ) {
+    mRegion_Var_Id_Table_.erase( mRegion_Var_Id_Table_.begin() + index, mRegion_Var_Id_Table_.end() );
+  } // Region_Id_Delete()
+
+  void Reset_Region_Table() {
+    mRegion_Var_Id_Table_.clear();
+  } // Reset_Region_Table()
 };
 
 class Scanner {
@@ -292,19 +434,6 @@ private:
            type == RSQB;
   } // Is_One_Char_Token_Type_()
 
-  string Back_Slash_() {
-    char ch = Get_Char_(), next_ch = Get_Char_();
-    if ( next_ch == 'n' )
-      return "\n";
-    else if ( next_ch == 't' )
-      return "\t";
-    else if ( next_ch == '\'' ) 
-      return "\'";
-    else if ( next_ch == '\"' )
-      return "\"";
-    else return "";
-  } // Back_Slash_()
-
   int Reserved_Word_( string str ) {
     if ( str == "int" ) return INT;
     else if ( str == "float" ) return FLOAT;
@@ -336,12 +465,13 @@ public:
   } // Zero()
 
   Token Peek_Token() {
-    int type, state = 0;
+    int type, state = 0, line = 1;
     bool stop = false, interupt = false;
     string token_name = "";
     if ( mNext_Token.Token_Type() == 0 ) {
       while ( !stop ) {
         if ( state == 0 ) {
+          line = mCurrent_Line_;
           type = Input_Type_( Peek_Char_() );
           if ( type == DIGIT )
             state = INT_CONS;
@@ -363,8 +493,7 @@ public:
           else state = type;
         } // if
         else if ( !interupt ) {
-          if ( state != CHAR_CONS && state != STR_CONS )
-            token_name += Get_Char_();
+          token_name += Get_Char_();
           type = Input_Type_( Peek_Char_() );
           if ( state == INT_CONS ) {
             if ( type == DOT )
@@ -381,11 +510,12 @@ public:
               Get_Char_(); // Pass " or '
               interupt = true;
             } // if
-            else if ( type == BACKSLASH ) 
-              token_name += Back_Slash_();
+            else if ( type == BACKSLASH ) {
+              token_name += Get_Char_(); // * Back Slash
+              token_name += Get_Char_(); // * Char follow back slash
+            } // else if 
             else if ( type == NEWLINE )
               throw "Missing Closed '";
-            else token_name += Get_Char_();
           } // else if
           else if ( state == IDENTIFER ) {
             if ( type != LETTER && type != DIGIT && type != UNDERLINE )
@@ -425,7 +555,7 @@ public:
         else {
           if ( state == OTHER || ( state == FLOAT_CONS && token_name == "." ) ) {
             string error_msg = "Line ";
-            error_msg += to_string( mCurrent_Line_ );
+            error_msg += to_string( line );
             error_msg += " : unrecognized token with first char : '";
             error_msg += token_name;
             error_msg += "'";
@@ -433,11 +563,10 @@ public:
             throw error_msg;
           } // if
           else if ( state == IDENTIFER ) {
-            mNext_Token = Token( Reserved_Word_( token_name ), token_name, mCurrent_Line_ );
+            mNext_Token = Token( Reserved_Word_( token_name ), token_name, line );
           } // else if
-          else 
-            mNext_Token = Token( state, token_name, mCurrent_Line_ );
-         
+          else mNext_Token = Token( state, token_name, line );
+          
           stop = true;
         } // else 
 
@@ -466,6 +595,7 @@ public:
 class InterCode {
 private:
   int mType_;
+  bool mUse_Bp_;
   int mOperater_;
   int mParameter_;
 public:
@@ -498,7 +628,6 @@ public:
   } // Parameter()
 };
 
-Data gData;
 
 class PrettyPrint {
 private:
@@ -562,18 +691,22 @@ private:
   Token mToken_;
   PrettyPrint mPretty_Print_;
   vector<InterCode> mCodes_;
+  vector<Token> mRecord_Code_;
   bool mDone_;
 
   bool Match_( int type ) {
     if ( mScn_.Peek_Token().Token_Type() == type ) {
       mToken_ = mScn_.Get_Token();
+      mRecord_Code_.push_back( mToken_ );
       return true;
     }
     else return false;
   } // Match_()
+
   // * user_input : ( definition | statement ) { definition | statement }
   bool User_Input_() {
     mPretty_Print_.Reset();
+    mRecord_Code_.clear();
     if ( Definition_() ) {
     } // if
     else if ( Statement_() ) {
@@ -637,13 +770,14 @@ private:
   bool Rest_Of_Delc_( int type, string id, bool global ) {
     int array = 0;
     bool is_new;
+    vector<string> new_id;
+    vector<int> new_array;
     if ( Match_( LSQB ) ) {
       if ( Match_( CONSTANT ) ) {
         array = atoi( mToken_.Name().c_str() );
         if ( Match_( RSQB ) ) {
-          is_new = gData.Define( global, type, id, array );
-          if ( global ) mPretty_Print_.Definition( is_new,false, id );
-
+          new_id.push_back( id );
+          new_array.push_back( array );
         } // if
         else Error_();
 
@@ -652,8 +786,8 @@ private:
 
     } // if
     else {
-      is_new = gData.Define( global, type, id, array );
-      if ( global ) mPretty_Print_.Definition( is_new, false, id );
+      new_id.push_back( id );
+      new_array.push_back( array );
     } // else
 
     while ( Match_( COMMA ) ) {
@@ -663,8 +797,8 @@ private:
           if ( Match_( CONSTANT ) ) {
             array = atoi( mToken_.Name().c_str() );
             if ( Match_( RSQB ) ) {
-              is_new = gData.Define( global, type, id, array );
-              if ( global ) mPretty_Print_.Definition( is_new,false, id );
+              new_id.push_back( id );
+              new_array.push_back( array );
             } // if
             else Error_();
 
@@ -673,104 +807,105 @@ private:
 
         } // if
         else {
-          is_new = gData.Define( global, type, id, array );
-          if ( global ) mPretty_Print_.Definition( is_new, false, id );
+          new_id.push_back( id );
+          new_array.push_back( array );
         } // else
 
       } // if
       else Error_();
 
     } // while
-    if ( Match_( SEMI ) )
+    if ( Match_( SEMI ) ) {
+      for ( int i = 0; i < new_id.size(); i++ ) {
+        bool is_new = gData.Define_Var( global, type, new_id[i], new_array[i] );
+        if ( global ) mPretty_Print_.Definition( is_new, false, new_id[i] );
+        
+      } // for
+
       return true;
+    } // if
     else Error_();
 
   } // Rest_Of_Delc_()
   // * function_definition_without_ID : '(' [ VOID | formal_parameter_list ] ')' compound_statement
   bool Func_Def_Without_Id_( int type, string id ) {
     if ( Match_( LPAR ) ) {
+      vector<int> type_list, array_list;
+      vector<string> id_list;
       if ( Match_( VOID ) ) {
         // TODO
       } // if
-      else if ( Formal_Parameter_List_() ) {
-
+      else if ( Formal_Parameter_List_( type_list, id_list, array_list ) ) {
+        for ( int i = 0; i < type_list.size(); i++ ) 
+          gData.Define_Var( false, type_list[i], id_list[i], array_list[i] );
+        
       } // else if
 
       if ( Match_( RPAR ) ) {
-        // TODO
+        if ( Compound_Statement_() ) {
+          gData.Reset_Region_Table();
+          bool is_new = gData.Define_Func( type, id, type_list, -1, 0, mRecord_Code_ );
+          mPretty_Print_.Definition( is_new, true, id );
+          return true;
+        } // if
+
       } // if
-      else {
-        Error_();
-      } // else 
+      
+      Error_();
     } // if
-    if ( Compound_Statement_() ) {
-      // TODO
-      return true;
-    } // if
-    else
-      return false;
+    else return false;
   } // Func_Def_Without_Id_()
   // * formal_parameter_list : type_specifier [ '&' ] Identifier [ '[' Constant ']' ] 
   // *                         { ',' type_specifier [ '&' ] Identifier [ '[' Constant ']' ] }
-  bool Formal_Parameter_List_() {
-    if ( Type_Specifier_() ) {
-      if ( Match_( AMPER ) ) {
-        // TODO
-      } // if
-      
-      if ( Match_( IDENTIFER ) ) {
-        if ( Match_( LSQB ) ) {
-          if ( Match_( CONSTANT ) ) {
-            if ( Match_( RSQB ) ) {
-            // TODO
+  bool Formal_Parameter_List_( vector<int> &type_list, vector<string> &id_list, vector<int> &array_list) {
+    int array_num, type_specifier;
+    bool second_time = false;
+    do {
+      if ( Type_Specifier_() ) {
+        type_specifier = mToken_.Token_Type();
+        if ( Match_( AMPER ) ) 
+          type_specifier += AMPER;
+        
+        if ( Match_( IDENTIFER ) ) {
+          Token id = mToken_;
+          if( Match_( LSQB ) ) {
+            if ( Match_( CONSTANT ) ) {
+              array_num = atoi( mToken_.Name().c_str() );
+              if ( !Match_( RSQB ) ) 
+                Error_;
+              
             } // if
             else Error_();
 
           } // if
-          else Error_();
+          else array_num = 0;
 
+          type_list.push_back( type_specifier );
+          id_list.push_back( id.Name() );
+          array_list.push_back( array_num );
         } // if
+        else Error_();
+      }
+      else if ( second_time ) 
+        Error_();
+      else false;
 
-      } // if
-
-      while ( Match_( COMMA ) ) {
-        if ( Type_Specifier_() ) {
-          if ( Match_( AMPER ) ) {
-            // TODO
-          } // if
-
-          if ( Match_( IDENTIFER ) ) {
-            if ( Match_( LSQB ) ) {
-              if ( Match_( CONSTANT ) ) {
-                if ( Match_( RSQB ) ) {
-                // TODO
-                } // if
-                else Error_();
-
-              } // if
-              else Error_();
-
-            } // if
-
-          } // if
-
-        }// if
-
-      } // while
-
-      return true;
-    } // if
-    else return false;
+      second_time = true;
+    } while ( Match_( COMMA ) );
+    
+    return true;
   } // Formal_Parameter_List_()
   // * compound_statement : '{' { declaration | statement } '}'
   bool Compound_Statement_() {
     if ( Match_( LBRACE ) ) {
+      int table_start = gData.Region_Table_End(); // The begin index of Region Table for this area
       while ( Decl_() || Statement_() ) {
         // TODO
       } // while
 
       if ( Match_( RBRACE ) ) {
-        // TODO
+        gData.Region_Id_Delete( table_start ); // Delete Id define in this area
+        return true;
       } // if
       else Error_();
 
@@ -904,17 +1039,19 @@ private:
   } // Statement_()
   // * expression : basic_expression { ',' basic_expression }
   bool Exp_() {
-    if ( Basic_Exp_() ) {
-      while ( Match_( COMMA ) ) {
-        if ( Basic_Exp_() )
-          ; // TODO
-        else Error_();
+    bool second_time = false;
+    do {
+      if ( Basic_Exp_() ) {
+        // TODO
+        return true;
+      } // if
+      else if ( second_time ) Error_;
+      else return false;
 
-      } // while
+      second_time = true;
+    } while ( Match_( COMMA ) );
 
-      return true;
-    } // if
-    else return false;
+    return true;
   } // Exp_()
   // * basic_expression : Identifier rest_of_Identifier_started_basic_exp
   // *                  | ( PP | MM ) Identifier rest_of_PPMM_Identifier_started_basic_exp
@@ -922,7 +1059,7 @@ private:
   // *                  | ( Constant | '(' expression ')' ) romce_and_romloe
   bool Basic_Exp_() {
     if ( Match_( IDENTIFER ) ) {
-      string id = mToken_.Name();
+      Token id = mToken_;
       if ( Rest_Of_Id_Started_Basic_Exp_( id ) )  {
         // TODO 
         return true;
@@ -932,7 +1069,8 @@ private:
     } // if
     else if ( Match_( PP ) || Match_( MM ) ) {
       if ( Match_( IDENTIFER ) ) {
-        if ( Rest_Of_PPMM_Id_Started_Basic_Exp_() ) {
+        Token id = mToken_;
+        if ( Rest_Of_PPMM_Id_Started_Basic_Exp_( id ) ) {
           return true;
         } // if
         else Error_();
@@ -964,6 +1102,9 @@ private:
         else Error_();
 
       } // if
+      else {
+        // TODO CONSTANT exp
+      } // else
       
       if ( Romce_And_Romloe_() ) 
         return true;
@@ -979,16 +1120,15 @@ private:
   // *                                          [ PP | MM ] romce_and_romloe 
   // *                                        )
   // *                                      | '(' [ actual_parameter_list ] ')' romce_and_romloe
-  bool Rest_Of_Id_Started_Basic_Exp_( string id ) {
+  bool Rest_Of_Id_Started_Basic_Exp_( Token id ) {
+    int type = UNDEFINE;
     if ( Match_( LPAR ) ) {
+      gData.Get_Func_Info( id, type );
       if ( Actual_Parameter_List_() ) {
         // TODO
       } // if
       if ( Match_( RPAR ) ) {
         if ( Romce_And_Romloe_() ) {
-          if ( id == "Done" ) {
-            mDone_ = true;
-          } // if
 
           return true;
         } // if
@@ -1028,7 +1168,9 @@ private:
     
   } // Rest_Of_Id_Stated_Basic_Exp_()
   // * rest_of_PPMM_Identifier_started_basic_exp : [ '[' expression ']' ] romce_and_romloe 
-  bool Rest_Of_PPMM_Id_Started_Basic_Exp_() {
+  bool Rest_Of_PPMM_Id_Started_Basic_Exp_( Token id ) {
+    int type = UNDEFINE;
+    gData.Get_Var_Addr( id, type );
     if ( Match_( LSQB ) ) {
       if ( Exp_() ) {
         if ( !Match_( RSQB ) )
@@ -1353,6 +1495,9 @@ private:
     } // else if
     else if ( Match_( PP ) || Match_( MM ) ) {
       if ( Match_( IDENTIFER ) ) {
+        Token id = mToken_;
+        int type = UNDEFINE;
+        gData.Get_Var_Addr( id, type );
         if ( Match_( LSQB ) ) {
           if ( Exp_() ) {
             if ( !Match_( RSQB ) )
@@ -1374,13 +1519,18 @@ private:
 // *                  | '(' expression ')'
   bool Signed_Unary_Exp_() {
     if ( Match_( IDENTIFER ) ) {
+      Token id = mToken_;
+      int type =UNDEFINE;
       if ( Match_( LPAR ) ) {
+        gData.Get_Func_Info( id, type );
         if ( Actual_Parameter_List_() ) {
           // TODO
         } // if
 
-        if ( !Match_( RPAR ) )
-          Error_();
+        if ( Match_( RPAR ) )
+          return true;
+        else Error_();
+
       } // if
       else if ( Match_( LSQB ) ) {
         if ( Exp_() ) {
@@ -1389,7 +1539,7 @@ private:
         } // if
 
       } // else if
-
+      gData.Get_Var_Addr( id, type );
       return true;
     } // i
     else if ( Match_( CONSTANT ) ) {
@@ -1414,8 +1564,10 @@ private:
 // *                    | '(' expression ')'
   bool Unsigned_Unary_Exp_() {
     if ( Match_( IDENTIFER ) ) {
-      string id = mToken_.Name();
+      Token id = mToken_;
+      int type;
       if ( Match_( LPAR ) ) {
+        gData.Get_Func_Info( id, type );
         if ( Actual_Parameter_List_() ) {
           // TODO
         } // if
@@ -1434,6 +1586,7 @@ private:
           } // if
         } // if
 
+        gData.Get_Var_Addr( id, type );
         if ( Match_( PP ) || Match_( MM ) ) {
           // TODO
         } // if
