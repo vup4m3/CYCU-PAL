@@ -68,6 +68,41 @@ enum Type {
 
 Data gData;
 
+// * 1 : unrecognized token with first char
+// * 2 : unexpected token 
+// * 3 : undefined identifier 
+class Error_Info {
+private:
+  int mLine_;
+  int mType_;
+  string mName_;
+public:
+  Error_Info( int line, int type, string name ) {
+    mLine_ = line;
+    mType_ = type;
+    mName_ = name;
+  } // Error_Info()
+
+  void Print_Msg() {
+    string msg = "Line ";
+    msg += to_string( mLine_ );
+    msg += " : ";
+    if ( mType_ = 1 ) 
+      msg += "unrecognized token with first char : '";
+    else if ( mType_ = 2 )
+      msg += "unexpected token : '";
+    else msg += "undefined identifier : '";
+
+    msg += mName_;
+    msg += "'";
+    cout << msg << endl;
+  } // Print_Msg()
+
+  int Error_Line() {
+    return mLine_;
+  } // Error_Line()
+};
+
 class Token {
 private:
   int mToken_Type_;
@@ -80,7 +115,7 @@ public:
     mToken_Type_ = 0;
     mConstant_Type_ = UNDEFINE;
     mName_ = "";
-    mLine_ = 0;
+    mLine_ = 1;
   } // Token()
 
   Token( int type, string name, int line ) {
@@ -113,18 +148,17 @@ public:
   string Name() {
     return mName_;
   } // Name()
-  // * Return "Line 1 : "
-  string Line() {
-    string str = "Line ";
-    str += to_string( mLine_ );
-    str += " : ";
-    return str;
+  
+  int Line() {
+    return mLine_;
   } // Line()
+
+  void Line_Reset() {
+    mLine_ = 1;
+  } // Line_Reset()
 
 };
 
-
-// * ( int type, float value )
 class Variable {
 private:
   int mType_;
@@ -207,102 +241,70 @@ public:
     return mAddr_;
   } // Addr()
 
-};
+  int Parm() {
+    return mType_List_.size();
+  } // Parm()
 
-class Constant {
-private:
-  int mType_;
-  float mValue_;
-
-public:
-  Constant() {
-    mType_ = UNDEFINE;
-    mValue_ = 0;
-  } // Constant()
-
-  Constant( Token token ) {
-    mType_ = token.Cons_Type();
-    if ( token.Cons_Type() == STRING ) {
-      
-    } // if
-    else
-      mValue_ = atof( token.Name().c_str() );
-
-  } // Constant()
 };
 
 class ConstantPool {
 private:
-}
+  vector<string> mNames_;
+  vector<int> mAddr_;
+  
+public:
+  int Get_Addr( Token token ) {
+    for ( int i = 0; i < mNames_.size(); i++ ) {
+      if ( mNames_[i] == token.Name() ) 
+        return mAddr_[i];
+      else if ( token.Name() < mNames_[i] ) {
+        mNames_.insert( mNames_.begin() + i, token.Name() );
+      } // else 
+      
+    }
+  }
+
+
+};
 
 class Data {
 private:
   vector<VarId> mGlobal_Var_Id_Table_;
-  vector<VarId> mRegion_Var_Id_Table_;
+  vector<VarId> mLocal_Var_Id_Table_;
   vector<FuncInfo> mFunc_Table_;
   vector<float> mData_;
-  // * Return the address we alloc
-  int Alloc_Data_( int num ) {
-    int i = 0, addr = -1;
-    if ( num > 0 ) {
-      addr = mData_.size();
-      for ( int i = 0; i < num; i++ ) 
-        mData_.push_back( 0 );
-
-    } // if
-
-    return addr;
-  } // Alloc_Data_()
+  vector<Variable> mExpr_Stack_;
+  int mData_End_;
 
   void Error_( Token token ) {
-    string msg = token.Line();
-    msg += "undefined identifier : '";
+    string msg = "Line ";
+    msg += to_string( token.Line() );
+    msg += " : undefined identifier : '";
     msg += token.Name();
     msg += "'";
     throw msg;
   } // Error_()
 
 public:
+  PrettyPrint mPretty_Print;
+  Data() {
+    mData_End_ = 0;
+  } // Data()
   // * New Definition return true, Definition return false
   bool Define_Var( bool global,  int type, string name, int array ) {
+    VarId var_id( type, name, array, 0 );
     vector<VarId> *table;
-    int addr = -1, index = 0;
-    global ? table = &mGlobal_Var_Id_Table_ : table = & mRegion_Var_Id_Table_;
-    VarId id( type, name, array, addr );
-    do {
-      if ( index == table->size() ) {
-        table->push_back( id );
-        return false;
-      } // if
-      else if ( table->at( index ).Name() == name ) {
-        table->at( index ) = id;
-        return true;
-      } // else if
-      else if ( table->at( index ).Name() < name ) {
-        table->insert( table->begin() + index, id );
-        return true;
-      } // else if
+    ( global ) ? table = &mGlobal_Var_Id_Table_ : &mLocal_Var_Id_Table_;
+    for ( int i = 0; i < table->size(); i++ ) {
+      if ( table->at( i ).Name() == name ) {
+        table->at( i ) = 
 
-    } while ( index++ );
-  
-    return false;
+      }
+    }
   } // Define
   // * If id defined, will return Id address and type.
   int Get_Var_Addr( Token token, int &type ) {
-    string str = token.Name();
-    vector<VarId> *table = &mRegion_Var_Id_Table_;
-    vector<VarId>::iterator i;
-    do {
-      for ( i = table->begin(); i != table->end(); ++i ) {
-        if ( i->Name() == str ) {
-          type = i->Type();
-          return -1;
-        } // if
-      
-      } // for
-
-      table = &mGlobal_Var_Id_Table_;
-    } while ( i != mGlobal_Var_Id_Table_.end() );
+    
 
     Error_( token );
   } // Get_Addr()
@@ -350,17 +352,17 @@ public:
     Error_( token );
   } // Get_Func_Addr()
 
-  int Region_Table_End() {
-    return mRegion_Var_Id_Table_.size();
-  } // Region_Table_Start()
+  int Local_Table_End() {
+    return mLocal_Var_Id_Table_.size();
+  } // Local_Table_Start()
 
-  void Region_Id_Delete( int index ) {
-    mRegion_Var_Id_Table_.erase( mRegion_Var_Id_Table_.begin() + index, mRegion_Var_Id_Table_.end() );
-  } // Region_Id_Delete()
+  void Local_Id_Delete( int index ) {
+    mLocal_Var_Id_Table_.erase( mLocal_Var_Id_Table_.begin() + index, mLocal_Var_Id_Table_.end() );
+  } // Local_Id_Delete()
 
-  void Reset_Region_Table() {
-    mRegion_Var_Id_Table_.clear();
-  } // Reset_Region_Table()
+  void Reset_Local_Table() {
+    mLocal_Var_Id_Table_.clear();
+  } // Reset_Local_Table()
 };
 
 class Scanner {
@@ -368,6 +370,11 @@ private:
   Token mNext_Token;
   vector<char> mLine_Input_;
   int mCurrent_Line_;
+
+  void Error_( string name ) {
+    Error_Info info( mCurrent_Line_, 1, name );
+    throw info;
+  } // Error_()
 
   char Peek_Char_() {
     char ch = '\0';
@@ -451,17 +458,18 @@ private:
 
 public:
   Scanner() {
-    Reset();
-  } // Scanner()
-  // * Reset for error happened
-  void Reset() {
-    mNext_Token = Token();
-    mLine_Input_.clear();
     mCurrent_Line_ = 1;
-  } // Reset()
-  // * Set Current Line to 0 for new instruction
-  void Zero() {
-    mCurrent_Line_ = 0;
+    Buffer_Clear();
+  } // Scanner()
+  
+  void Buffer_Clear() {
+    mLine_Input_.clear();
+    mNext_Token = Token(); // Reset token
+  } // Buffer_Clear()
+  
+  void Line_Counter_Reset() {
+    mCurrent_Line_ = 1;
+    mNext_Token.Line_Reset();
   } // Zero()
 
   Token Peek_Token() {
@@ -541,7 +549,7 @@ public:
             type == EQ ? state = TE : interupt = true; // *= or *
           else if ( state = SLASH ) {
             if ( type == SLASH ) { // Comment
-              Reset();
+              Buffer_Clear();
               return Peek_Token();
             } // if 
             else if ( type == EQ ) // /=
@@ -554,13 +562,7 @@ public:
         } // else if
         else {
           if ( state == OTHER || ( state == FLOAT_CONS && token_name == "." ) ) {
-            string error_msg = "Line ";
-            error_msg += to_string( line );
-            error_msg += " : unrecognized token with first char : '";
-            error_msg += token_name;
-            error_msg += "'";
-            Reset();
-            throw error_msg;
+            Error_( token_name );
           } // if
           else if ( state == IDENTIFER ) {
             mNext_Token = Token( Reserved_Word_( token_name ), token_name, line );
@@ -583,12 +585,9 @@ public:
     return token;
   } // Get_Token()
 
-  string Line_String() {
-    string str = "Line ";
-    str += to_string( mCurrent_Line_ );
-    str += " :";
-    return str;
-  } // Current_Line()
+  int Cur_Line() {
+    return mCurrent_Line_;
+  } // Cur_Line()
 
 };
 
@@ -689,7 +688,6 @@ class Parser {
 private:
   Scanner mScn_;
   Token mToken_;
-  PrettyPrint mPretty_Print_;
   vector<InterCode> mCodes_;
   vector<Token> mRecord_Code_;
   bool mDone_;
@@ -705,12 +703,12 @@ private:
 
   // * user_input : ( definition | statement ) { definition | statement }
   bool User_Input_() {
-    mPretty_Print_.Reset();
+    gData.mPretty_Print_.Reset();
     mRecord_Code_.clear();
     if ( Definition_() ) {
     } // if
     else if ( Statement_() ) {
-      mPretty_Print_.Stm();
+      gData.mPretty_Print_.Stm();
     } // else if
     else return false;
 
@@ -818,7 +816,7 @@ private:
     if ( Match_( SEMI ) ) {
       for ( int i = 0; i < new_id.size(); i++ ) {
         bool is_new = gData.Define_Var( global, type, new_id[i], new_array[i] );
-        if ( global ) mPretty_Print_.Definition( is_new, false, new_id[i] );
+        if ( global ) gData.mPretty_Print_.Definition( is_new, false, new_id[i] );
         
       } // for
 
@@ -845,7 +843,7 @@ private:
         if ( Compound_Statement_() ) {
           gData.Reset_Region_Table();
           bool is_new = gData.Define_Func( type, id, type_list, -1, 0, mRecord_Code_ );
-          mPretty_Print_.Definition( is_new, true, id );
+          gData.mPretty_Print_.Definition( is_new, true, id );
           return true;
         } // if
 
@@ -1611,21 +1609,22 @@ private:
   } // UNsigned_Unary_Exp_()
 
   void Error_() {
-    string msg = mScn_.Line_String();
-    msg += "unexpected token : '";
-    msg += mScn_.Get_Token().Name();
-    msg += "'";
-    throw msg;
+    Error_Info info( mToken_.Line(), 2, mToken_.Name() );
+    throw info;
   } // Error()
 public:
   Parser() {
     mDone_ = false;
-    Reset();
+    mToken_ = Token();
+    mScn_ = Scanner();
   } // Parser()
 
-  void Reset() {
+  void Reset( int error_line ) {
     mToken_ = Token();
-    mScn_.Reset();
+    if( error_line == mScn_.Cur_Line() )
+      mScn_ = Scanner();
+    else 
+      mScn_.Line_Counter_Reset();
   } // Reset()
 
 
@@ -1637,9 +1636,6 @@ public:
       
   } // Parse()
 
-  void Pretty_Print() {
-    mPretty_Print_.Print();
-  } // Pretty_Print()
 };
 
 class Runner {
@@ -1672,11 +1668,11 @@ int main() {
     cout << "> ";
     try {
       runner.Eval( parser.Parse() );
-      parser.Pretty_Print();
+      
     } // try
-    catch( string error_info ) {
-      cout << error_info << endl;
-      parser.Reset();
+    catch( Error_Info error_info ) {
+      error_info.Print_Msg();
+      parser.Reset( error_info.Error_Line() );
     } // catch
     catch( bool stop ) { // * Catch Done();
       done = true;

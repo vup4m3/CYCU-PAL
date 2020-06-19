@@ -34,15 +34,12 @@ public:
 
 };
 
-void F() {
-  static int a = 0;
-  a++;
+void F( int a ) {
   cout << a << endl;
 }
 
 int main() {
-  string a = "012";
-  cout << a.size() << endl;
+  int a = 1, b = 2;
 }
 enum Type {
   IDENTIFIER,  
