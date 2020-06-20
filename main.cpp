@@ -337,15 +337,13 @@ private:
   string mName_;
   vector<VarType> mType_List_;
   int mAddr_;
-  int mVar_Num_;
   vector<Token> mFunc_Code_;
 public:
-  FuncInfo( int type, string name, vector<VarType> type_list, int addr, int var_num, vector<Token> func_code ) {
+  FuncInfo( int type, string name, vector<VarType> type_list, int addr, vector<Token> func_code ) {
     mType_ = VarType( type, false, 0 );
     mName_ = name;
     mType_List_ = type_list;
     mAddr_ = addr;
-    mVar_Num_ = var_num;
     mFunc_Code_ = func_code;
   } // FuncId()
 
@@ -560,8 +558,9 @@ public:
     Error_( token );
   } // Get_Addr()
 
-  bool Define_Func( int type, string name, vector<VarType> type_list, int addr, int var_num, vector<Token> func_code ) {
-    FuncInfo id( type, name, type_list, addr, var_num, func_code );
+  bool Define_Func( int type, string name, vector<VarType> type_list, vector<Token> func_code ) {
+    int addr = mFunc_Code_End_;
+    FuncInfo id( type, name, type_list, addr, func_code );
     int index = 0;
     do {
       if ( index == mFunc_Table_.size() ) {
@@ -587,27 +586,27 @@ public:
     vector<VarType> type_list;
     vector<Token> source_code;
     if ( name == "ListAllVariables" ) {
-      FuncInfo info( VOID, name, type_list, -1, 0, source_code );
+      FuncInfo info( VOID, name, type_list, -1, source_code );
       return info; 
     } // if
     else if ( name == "ListAllFunctions" ) {
-      FuncInfo info( VOID, name, type_list, -2, 0, source_code );
+      FuncInfo info( VOID, name, type_list, -2, source_code );
       return info;
     } // else if
     else if ( name == "ListVariable" ) {
       VarType type( STRING, true, 0 );
       type_list.push_back( type );
-      FuncInfo info( VOID, name, type_list, -3, 0, source_code );
+      FuncInfo info( VOID, name, type_list, -3, source_code );
       return info;
     } // else if
     else if ( name == "ListFunction" ) {
       VarType type( STRING, true, 0 );
       type_list.push_back( type );
-      FuncInfo info( VOID, name, type_list, -4, 0, source_code );
+      FuncInfo info( VOID, name, type_list, -4, source_code );
       return info;
     } // else if
     else if ( name == "Done" ) {
-      FuncInfo info( VOID, name, type_list, -5, 0, source_code );
+      FuncInfo info( VOID, name, type_list, -5, source_code );
       return info;
     } // else if
     else {
@@ -843,10 +842,8 @@ public:
           if ( state == OTHER || ( state == FLOAT_CONS && token_name == "." ) ) {
             Error_( token_name );
           } // if
-          else if ( state == IDENTIFER ) {
+          else if ( state == IDENTIFER ) 
             mNext_Token = Token( Reserved_Word_( token_name ), token_name, line );
-
-          } // else if
           else mNext_Token = Token( state, token_name, line );
           
           stop = true;
@@ -1031,12 +1028,13 @@ private:
       if ( Match_( RPAR ) ) {
         if ( Compound_Statement_() ) {
           // TODO compute the address Func should be
-          bool is_new = gData.Define_Func( type, id, type_list, 0, 0, mRecord_Code_ );
+          bool is_new = gData.Define_Func( type, id, type_list, mRecord_Code_ );
           gData.mPretty_Print.Definition( is_new, true, id );
+          gData.ResetLocalTable();
+          gData.CodeInsert( true, mCodes_ );
           return true;
         } // if
 
-        gData.ResetLocalTable();
       } // if
       
       Error_();
@@ -1130,7 +1128,6 @@ private:
   // *           | DO statement WHILE '(' expression ')' ';'
   bool Statement_() {
     if ( Match_( SEMI ) ) {
-      // TODO
       return true;
     } // if
     else if ( Exp_() ) {
