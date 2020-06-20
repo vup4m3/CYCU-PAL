@@ -3,6 +3,8 @@
 # include <string>
 # include <string.h>
 using namespace std;
+
+Btest gTest;
 class Test {
 public:
   int a;

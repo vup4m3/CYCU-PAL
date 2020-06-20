@@ -23,7 +23,7 @@ enum Type {
   FUNCTION, UNDEFINE, CONSTANT,
   // Constant Type
   INT_CONS, FLOAT_CONS, STR_CONS,
-  CHAR_CONS,
+  CHAR_CONS, TRUE_CONS, FALSE_CONS,
   LPAR,         // (
   RPAR,         // )
   LSQB,        // [
@@ -66,8 +66,6 @@ enum Type {
   // * Operater
 };
 
-Data gData;
-
 // * 1 : unrecognized token with first char
 // * 2 : unexpected token 
 // * 3 : undefined identifier 
@@ -83,7 +81,7 @@ public:
     mName_ = name;
   } // Error_Info()
 
-  void Print_Msg() {
+  void PrintMsg() {
     string msg = "Line ";
     msg += to_string( mLine_ );
     msg += " : ";
@@ -103,6 +101,63 @@ public:
   } // Error_Line()
 };
 
+class PrettyPrint {
+private:
+  int mType_;
+  vector<bool> mIs_New_Def_;
+  vector<bool> mIs_Func_;
+  vector<string> mId_;
+public:
+  PrettyPrint() {
+    Reset();
+  } // PrettyPrint()
+
+  void Reset() {
+    mType_ = -1;
+    mIs_Func_.clear();
+    mIs_New_Def_.clear();
+    mId_.clear();
+  } // Reset()
+
+  void Stm() {
+    mType_ = 0;
+  } // Set_Type()
+  // * New func id_name
+  void Definition( bool is_new, bool is_func, string name ) {
+    mType_ = 1;
+    mIs_New_Def_.push_back( is_new );
+    mIs_Func_.push_back( is_func );
+    mId_.push_back( name );
+  } // Definition()
+  
+  void Print() {
+    if ( mType_ == 0 ) {
+      cout << "Statement executed ..." << endl;
+    } // if 
+    else if ( mType_ == 1 ){
+      string msg;
+      for ( int i = 0; i < mId_.size(); i++ ) {
+        if ( mIs_New_Def_[i] )
+          msg = "New definition of ";
+        else 
+          msg = "Definition of ";
+
+        msg += mId_[i];
+        if ( mIs_Func_[i] )
+          msg += "()";
+        
+        msg += " entered ...";
+
+        cout << msg << endl;
+      } // for
+
+    } // else if
+    
+  } // Print
+};
+
+// * mConstant_Type : TRUE_CONS | FALSE_CONS | INT 
+// *                | FLOAT | CHAR | STRING
 class Token {
 private:
   int mToken_Type_;
@@ -122,8 +177,11 @@ public:
     mName_ = name;
     mConstant_Type_ = 0;
     mLine_ = line;
-    if ( type == INT_CONS || type == STR_CONS || type == CHAR_CONS || type == FLOAT_CONS ) {
-      if ( type == INT_CONS )
+    if ( type == INT_CONS || type == STR_CONS || type == CHAR_CONS || type == FLOAT_CONS ||
+         type == TRUE_CONS || type == FALSE_CONS ) {
+      if ( type == TRUE_CONS || type == FALSE_CONS ) 
+        mConstant_Type_ = type;
+      else if ( type == INT_CONS )
         mConstant_Type_ = INT;
       else if ( type == FLOAT_CONS )
         mConstant_Type_ = FLOAT;
@@ -153,28 +211,92 @@ public:
     return mLine_;
   } // Line()
 
-  void Line_Reset() {
+  void LineReset() {
     mLine_ = 1;
   } // Line_Reset()
 
 };
 
+class StringPool {
+private:
+  vector<string> mPool_;
+public:
+  int Get_Addr( string str ) {
+    int i = 0;
+    for (; i < mPool_.size(); i++ )
+      if ( str == mPool_[i] )
+        return i;
+    
+    mPool_.push_back( str );
+    return i;
+  } // int Get_Addr()
+
+  string Load_Str( int addr ) {
+    return mPool_[addr];
+  } // Load_Str()
+}; 
+
+StringPool gStr_Pool;
+
+// * string(addr) int char float bool array
+class VarType {
+private:
+  int mType_; // string | int | char | flaot
+  bool mAddr_; // Addr flag
+  int mArray_; // 0 mean not a array
+public:
+  VarType() {
+    mType_ = 0;
+    mAddr_ = false;
+    mArray_ = 0;
+  } // VarType()
+
+  VarType( int type, bool is_addr, int array ) {
+    mType_ = type;
+    mAddr_ = is_addr;
+    mArray_ = array;
+  } // VarType()
+
+  int Frame_Space() {
+    return ( mArray_ == 0 ) ?  1 :  mArray_;
+  } // Frame_Space()
+};
+
 class Variable {
 private:
-  int mType_;
+  VarType mType_;
   float mValue_;
 public:
   Variable() {
-    mType_ = 0;
+    mType_ = VarType();
     mValue_ = 0;
   } // Variable()
 
-  Variable( int type, float value ) {
+  Variable( VarType type, float value ) {
     mType_ = type;
     mValue_ = value;
   } // Variable()
+  // * For Constant
+  Variable( int type, string str ) {
+    if ( type == TRUE_CONS || FALSE_CONS ) {
+      VarType var_type( BOOL, false, 0 );
+      mType_ = var_type;
+      ( type == TRUE_CONS ) ? mValue_ = 1 : mValue_ = 0;
+    } // if
+    else {
+      VarType var_type( type, false, 0 );
+      mType_ = var_type;
+      if ( type == INT || type == FLOAT ) 
+        mValue_ = atof( str.c_str() );
+      else if ( type == CHAR )
+        mValue_ = str.front();
+      else 
+        mValue_ = gStr_Pool.Get_Addr( str );
 
-  int Type() {
+    } // else 
+  } // Variable()
+
+  VarType Type() {
     return mType_;
   } // Type()
 
@@ -186,19 +308,17 @@ public:
 
 class VarId {
 private:
-  int mType_;
+  VarType mType_;
   string mName_;
-  int mArray_;
   int mAddr_;
 public:
-  //  int type, string name, int array 
-  VarId( int type, string name, int array, int addr ) {
+  VarId( VarType type, string name, int addr ) {
     mType_ = type;
     mName_ = name;
     mAddr_ = addr;
   } // VarId()
 
-  int Type() {
+  VarType Type() {
     return mType_;
   } // Type()
 
@@ -213,15 +333,15 @@ public:
 
 class FuncInfo {
 private:
-  int mType_;
+  VarType mType_;
   string mName_;
-  vector<int> mType_List_;
+  vector<VarType> mType_List_;
   int mAddr_;
   int mVar_Num_;
   vector<Token> mFunc_Code_;
 public:
-  FuncInfo( int type, string name, vector<int> type_list, int addr, int var_num, vector<Token> func_code ) {
-    mType_ = type;
+  FuncInfo( int type, string name, vector<VarType> type_list, int addr, int var_num, vector<Token> func_code ) {
+    mType_ = VarType( type, false, 0 );
     mName_ = name;
     mType_List_ = type_list;
     mAddr_ = addr;
@@ -229,7 +349,7 @@ public:
     mFunc_Code_ = func_code;
   } // FuncId()
 
-  int Type() {
+  VarType Type() {
     return mType_;
   } // Type()
 
@@ -250,21 +370,126 @@ public:
 class ConstantPool {
 private:
   vector<string> mNames_;
-  vector<int> mAddr_;
+  vector<Variable> mVars_;
   
 public:
-  int Get_Addr( Token token ) {
-    for ( int i = 0; i < mNames_.size(); i++ ) {
-      if ( mNames_[i] == token.Name() ) 
-        return mAddr_[i];
-      else if ( token.Name() < mNames_[i] ) {
-        mNames_.insert( mNames_.begin() + i, token.Name() );
+  Variable Get_Var( Token token ) {
+    string name = token.Name();
+    int i = 0;
+    while ( i < mNames_.size() ) {
+      if ( mNames_[i] == name ) 
+        return mVars_[i];
+      else if ( name < mNames_[i] ) {
+        Variable var( token.Cons_Type(), name );
+        mNames_.insert( mNames_.begin() + i, name );
+        mVars_.insert( mVars_.begin() + i, var );
+        return var;
       } // else 
+      else i++;
       
-    }
-  }
+    } // for
+    
+    Variable var( token.Cons_Type(), name );
+    mNames_.push_back( name );
+    mVars_.push_back( var );
+  } // Get_Var()
 
+};
+// +--------------+
+// | Stack        | // Local Variable and Function Arguement
+// +--------------+ <- Stack_Begin
+// | Data segment | // Global Variable
+// +--------------+
+class Mem {
+private:
+  vector<Variable> mData_;
+  int mStack_Begin_;
+public: 
+  Mem() {
+    mStack_Begin_ = 0;
+  } // Mem()
 
+  void MakeStackFrame( int frame_size ) {
+    Variable var;
+    for ( int i = 0; i < frame_size; i++ )
+      mData_.push_back( var );
+  } // Make_Stack_Frame()
+
+  int Alloc_Data( int frame_size ) {
+    Variable var;
+    int addr = mStack_Begin_;
+    for ( int i = 0; i < frame_size; i++, mStack_Begin_++ )
+      mData_.insert( mData_.begin(), var );
+
+    return addr;
+  } // Alloc_Data()
+
+  Variable Load_Var( int addr ) {
+    if ( addr > mData_.size() ) 
+      throw string( "Segmentation fault" );
+    else 
+      return mData_[addr];
+  } // Load_Var()
+
+  void Store( int addr, Variable var ) {
+    if ( addr > mData_.size() )
+      throw string( "Segmentation fault" );
+    else mData_[addr] = var;
+  } // Store()
+
+};
+
+enum Instr {
+  // * Alloc space in mem_stack
+  STACK_ALLOC = 556,
+  // * Alloc space in Data
+  DATA_ALLOC,
+  // * Load address than push it in to stack
+  LOAD_ADDR,
+  // * Load Constant than push it in to stack
+  LOAC_CONS,
+  // * just the names of the (global) variables
+  LIST_ALL_VAR,
+  // * just the names of the (user-defined)
+  LIST_ALL_FUNC,
+  // * the definition of a particular variable, arg pop from Stack
+  LIST_VAR,
+  // * the definition of a particular function, arg pop from Stack
+  LIST_FUNC,
+  DONE
+
+};
+
+class InterCode {
+private:
+  int mInstruction_;
+  bool mAbsolute_;
+  int mParm_;
+public:
+  InterCode() {
+    mInstruction_ = 0;
+    mAbsolute_ = 0;
+    mParm_ = 0;
+  } // InterCode()
+
+  InterCode( int instr, bool relative, int parm ) {
+    mInstruction_ = instr;
+    mAbsolute_ = relative;
+    mParm_ = parm;
+  } // InterCode()
+
+  int Instr() {
+    return mInstruction_;
+  } // Instr()
+
+  bool Abs() {
+    return mAbsolute_;
+  } // Abs()
+
+  int Parm() {
+    return mParm_;
+  } // Parm()
+  
 };
 
 class Data {
@@ -272,44 +497,70 @@ private:
   vector<VarId> mGlobal_Var_Id_Table_;
   vector<VarId> mLocal_Var_Id_Table_;
   vector<FuncInfo> mFunc_Table_;
-  vector<float> mData_;
-  vector<Variable> mExpr_Stack_;
-  int mData_End_;
+  vector<InterCode> mCode_;
+  int mFunc_Code_End_;
+  ConstantPool mCons_Pool_;
+  Mem mMem_;
 
   void Error_( Token token ) {
-    string msg = "Line ";
-    msg += to_string( token.Line() );
-    msg += " : undefined identifier : '";
-    msg += token.Name();
-    msg += "'";
-    throw msg;
+    Error_Info info( token.Line(), 3, token.Name() );
+    throw info;
   } // Error_()
 
 public:
   PrettyPrint mPretty_Print;
+
   Data() {
-    mData_End_ = 0;
   } // Data()
   // * New Definition return true, Definition return false
-  bool Define_Var( bool global,  int type, string name, int array ) {
-    VarId var_id( type, name, array, 0 );
+  bool Define_Var( bool global,  VarType var_type, string name ) {
+    int addr = 0;
     vector<VarId> *table;
-    ( global ) ? table = &mGlobal_Var_Id_Table_ : &mLocal_Var_Id_Table_;
+    if ( global ) {
+      addr = mMem_.Alloc_Data( var_type.Frame_Space() );
+      table = &mGlobal_Var_Id_Table_;
+    } // if
+    else {
+      addr = mLocal_Var_Id_Table_.size();
+      table = &mLocal_Var_Id_Table_;
+    } // else
+
+    VarId var_id( var_type , name, addr ); 
     for ( int i = 0; i < table->size(); i++ ) {
       if ( table->at( i ).Name() == name ) {
-        table->at( i ) = 
+        table->at( i ) = var_id;
+        return true;
+      } // if
+      else if ( name < table->at( i ).Name() ) {
+        table->insert( table->begin() + i, var_id );
+        return false;
+      } // else if
 
-      }
-    }
+    } // for
+
+    table->push_back( var_id );
+    return false;
   } // Define
-  // * If id defined, will return Id address and type.
-  int Get_Var_Addr( Token token, int &type ) {
-    
+  // * If id defined, will return VarId.
+  VarId Get_VarId( Token token ) {
+    string name = token.Name();
+    vector<VarId> *table = &mLocal_Var_Id_Table_;
+    vector<VarId>::iterator ptr = table->begin();
+    do {
+      while ( ptr != table->end() ) {
+        if ( ptr->Name() == name )
+          return *ptr;
+        else ptr++;
+      } // while
+
+      table = &mGlobal_Var_Id_Table_;
+      ptr = table->begin();
+    } while ( ptr != table->end() );
 
     Error_( token );
   } // Get_Addr()
 
-  bool Define_Func( int type, string name, vector<int> type_list, int addr, int var_num, vector<Token> func_code ) {
+  bool Define_Func( int type, string name, vector<VarType> type_list, int addr, int var_num, vector<Token> func_code ) {
     FuncInfo id( type, name, type_list, addr, var_num, func_code );
     int index = 0;
     do {
@@ -331,22 +582,38 @@ public:
     return false;
   } // Define_Func()
 
-  int Get_Func_Info( Token token, int &type ) {
+  FuncInfo Get_Func_Info( Token token ) {
     string name = token.Name();
-    if ( name == "ListAllVariables" ) 
-      return -1;
-    else if ( name == "ListAllFunctions" )
-      return -2;
-    else if ( name == "ListVariable" ) 
-      return -3;
-    else if ( name == "ListFunction" ) 
-      return -4;
-    else if ( name == "Done" )
-      return -5;
+    vector<VarType> type_list;
+    vector<Token> source_code;
+    if ( name == "ListAllVariables" ) {
+      FuncInfo info( VOID, name, type_list, -1, 0, source_code );
+      return info; 
+    } // if
+    else if ( name == "ListAllFunctions" ) {
+      FuncInfo info( VOID, name, type_list, -2, 0, source_code );
+      return info;
+    } // else if
+    else if ( name == "ListVariable" ) {
+      VarType type( STRING, true, 0 );
+      type_list.push_back( type );
+      FuncInfo info( VOID, name, type_list, -3, 0, source_code );
+      return info;
+    } // else if
+    else if ( name == "ListFunction" ) {
+      VarType type( STRING, true, 0 );
+      type_list.push_back( type );
+      FuncInfo info( VOID, name, type_list, -4, 0, source_code );
+      return info;
+    } // else if
+    else if ( name == "Done" ) {
+      FuncInfo info( VOID, name, type_list, -5, 0, source_code );
+      return info;
+    } // else if
     else {
       for ( int i = 0; i < mFunc_Table_.size(); i++ ) 
         if( mFunc_Table_[i].Name() == name )
-          return i;
+          return mFunc_Table_[i];
     } // else
     
     Error_( token );
@@ -356,14 +623,24 @@ public:
     return mLocal_Var_Id_Table_.size();
   } // Local_Table_Start()
 
-  void Local_Id_Delete( int index ) {
+  void LocalIdDelete( int index ) {
     mLocal_Var_Id_Table_.erase( mLocal_Var_Id_Table_.begin() + index, mLocal_Var_Id_Table_.end() );
   } // Local_Id_Delete()
 
-  void Reset_Local_Table() {
+  void ResetLocalTable() {
     mLocal_Var_Id_Table_.clear();
   } // Reset_Local_Table()
+
+  void CodeInsert( bool is_func, vector<InterCode> new_code ) {
+    if ( is_func ) {
+      mCode_.insert( mCode_.begin() + mFunc_Code_End_, new_code.begin(), new_code.end() );
+      mFunc_Code_End_ += new_code.size();
+    } // if
+    else mCode_.insert( mCode_.end(), new_code.begin(), new_code.end() );
+  } // Code_Insert()
 };
+
+Data gData;
 
 class Scanner {
 private:
@@ -453,6 +730,8 @@ private:
     else if ( str == "while" ) return WHILE;
     else if ( str == "do" ) return DO;
     else if ( str == "return" ) return RETURN;
+    else if ( str == "true" ) return TRUE_CONS;
+    else if ( str == "false" ) return FALSE_CONS;
     else return IDENTIFER;
   } // Reserved_Word_()
 
@@ -469,7 +748,7 @@ public:
   
   void Line_Counter_Reset() {
     mCurrent_Line_ = 1;
-    mNext_Token.Line_Reset();
+    mNext_Token.LineReset();
   } // Zero()
 
   Token Peek_Token() {
@@ -566,6 +845,7 @@ public:
           } // if
           else if ( state == IDENTIFER ) {
             mNext_Token = Token( Reserved_Word_( token_name ), token_name, line );
+
           } // else if
           else mNext_Token = Token( state, token_name, line );
           
@@ -591,98 +871,6 @@ public:
 
 };
 
-class InterCode {
-private:
-  int mType_;
-  bool mUse_Bp_;
-  int mOperater_;
-  int mParameter_;
-public:
-  InterCode() {
-    Reset();
-  } // InterCode()
-
-  InterCode( int type, int op, int par ) {
-    mType_ = type;
-    mOperater_ = op;
-    mParameter_ = par;
-  } // InterCode()
-
-  void Reset() {
-    mType_ = UNDEFINE;
-    mOperater_ = 0;
-    mParameter_ = 0;
-  } // Reset()
-
-  int Type() {
-    return mType_;
-  } // Type()
-
-  int Operater() {
-    return mOperater_;
-  } // Operater()
-
-  int Parameter() {
-    return mParameter_;
-  } // Parameter()
-};
-
-
-class PrettyPrint {
-private:
-  int mType_;
-  vector<bool> mIs_New_Def_;
-  vector<bool> mIs_Func_;
-  vector<string> mId_;
-public:
-  PrettyPrint() {
-    Reset();
-  } // PrettyPrint()
-
-  void Reset() {
-    mType_ = -1;
-    mIs_Func_.clear();
-    mIs_New_Def_.clear();
-    mId_.clear();
-  } // Reset()
-
-  void Stm() {
-    mType_ = 0;
-  } // Set_Type()
-  // * New func id_name
-  void Definition( bool is_new, bool is_func, string name ) {
-    mType_ = 1;
-    mIs_New_Def_.push_back( is_new );
-    mIs_Func_.push_back( is_func );
-    mId_.push_back( name );
-  } // Definition()
-  
-  void Print() {
-    if ( mType_ == 0 ) {
-      cout << "Statement executed ..." << endl;
-    } // if 
-    else if ( mType_ == 1 ){
-      string msg;
-      for ( int i = 0; i < mId_.size(); i++ ) {
-        if ( mIs_New_Def_[i] )
-          msg = "New definition of ";
-        else 
-          msg = "Definition of ";
-
-        msg += mId_[i];
-        if ( mIs_Func_[i] )
-          msg += "()";
-        
-        msg += " entered ...";
-
-        cout << msg << endl;
-      } // for
-
-    } // else if
-    
-  } // Print
-};
-
 class Parser {
   // TODO Record Function code
 private:
@@ -703,12 +891,12 @@ private:
 
   // * user_input : ( definition | statement ) { definition | statement }
   bool User_Input_() {
-    gData.mPretty_Print_.Reset();
+    gData.mPretty_Print.Reset();
     mRecord_Code_.clear();
     if ( Definition_() ) {
     } // if
     else if ( Statement_() ) {
-      gData.mPretty_Print_.Stm();
+      gData.mPretty_Print.Stm();
     } // else if
     else return false;
 
@@ -815,8 +1003,9 @@ private:
     } // while
     if ( Match_( SEMI ) ) {
       for ( int i = 0; i < new_id.size(); i++ ) {
-        bool is_new = gData.Define_Var( global, type, new_id[i], new_array[i] );
-        if ( global ) gData.mPretty_Print_.Definition( is_new, false, new_id[i] );
+        VarType var_type( type, false, new_array[i] );
+        bool is_new = gData.Define_Var( global, var_type, new_id[i] );
+        if ( global ) gData.mPretty_Print.Definition( is_new, false, new_id[i] );
         
       } // for
 
@@ -828,25 +1017,26 @@ private:
   // * function_definition_without_ID : '(' [ VOID | formal_parameter_list ] ')' compound_statement
   bool Func_Def_Without_Id_( int type, string id ) {
     if ( Match_( LPAR ) ) {
-      vector<int> type_list, array_list;
+      vector<VarType> type_list;
       vector<string> id_list;
       if ( Match_( VOID ) ) {
         // TODO
       } // if
-      else if ( Formal_Parameter_List_( type_list, id_list, array_list ) ) {
+      else if ( Formal_Parameter_List_( type_list, id_list ) ) {
         for ( int i = 0; i < type_list.size(); i++ ) 
-          gData.Define_Var( false, type_list[i], id_list[i], array_list[i] );
+          gData.Define_Var( false, type_list[i], id_list[i] );
         
       } // else if
 
       if ( Match_( RPAR ) ) {
         if ( Compound_Statement_() ) {
-          gData.Reset_Region_Table();
-          bool is_new = gData.Define_Func( type, id, type_list, -1, 0, mRecord_Code_ );
-          gData.mPretty_Print_.Definition( is_new, true, id );
+          // TODO compute the address Func should be
+          bool is_new = gData.Define_Func( type, id, type_list, 0, 0, mRecord_Code_ );
+          gData.mPretty_Print.Definition( is_new, true, id );
           return true;
         } // if
 
+        gData.ResetLocalTable();
       } // if
       
       Error_();
@@ -855,14 +1045,15 @@ private:
   } // Func_Def_Without_Id_()
   // * formal_parameter_list : type_specifier [ '&' ] Identifier [ '[' Constant ']' ] 
   // *                         { ',' type_specifier [ '&' ] Identifier [ '[' Constant ']' ] }
-  bool Formal_Parameter_List_( vector<int> &type_list, vector<string> &id_list, vector<int> &array_list) {
+  bool Formal_Parameter_List_( vector<VarType> &type_list, vector<string> &id_list ) {
     int array_num, type_specifier;
-    bool second_time = false;
+    bool second_time = false, amper = false;
     do {
       if ( Type_Specifier_() ) {
         type_specifier = mToken_.Token_Type();
         if ( Match_( AMPER ) ) 
-          type_specifier += AMPER;
+          amper = true;
+        else amper = false;
         
         if ( Match_( IDENTIFER ) ) {
           Token id = mToken_;
@@ -878,9 +1069,9 @@ private:
           } // if
           else array_num = 0;
 
-          type_list.push_back( type_specifier );
+          VarType type( type_specifier, amper, array_num );
+          type_list.push_back( type );
           id_list.push_back( id.Name() );
-          array_list.push_back( array_num );
         } // if
         else Error_();
       }
@@ -895,14 +1086,14 @@ private:
   } // Formal_Parameter_List_()
   // * compound_statement : '{' { declaration | statement } '}'
   bool Compound_Statement_() {
+    int local_start = gData.Local_Table_End(); // * The first index of local var for this region
     if ( Match_( LBRACE ) ) {
-      int table_start = gData.Region_Table_End(); // The begin index of Region Table for this area
       while ( Decl_() || Statement_() ) {
         // TODO
       } // while
 
       if ( Match_( RBRACE ) ) {
-        gData.Region_Id_Delete( table_start ); // Delete Id define in this area
+        gData.LocalIdDelete( local_start ); // * Restore var define in this region
         return true;
       } // if
       else Error_();
@@ -910,6 +1101,7 @@ private:
     } // if
   } // Compound_Statement_()
   // * declaration : type_specifier Identifier rest_of_declarators
+  // * local Variable define
   bool Decl_() {
     int type;
     string id;
@@ -1043,7 +1235,7 @@ private:
         // TODO
         return true;
       } // if
-      else if ( second_time ) Error_;
+      else if ( second_time ) Error_; // basic_expr, ;
       else return false;
 
       second_time = true;
@@ -1121,7 +1313,7 @@ private:
   bool Rest_Of_Id_Started_Basic_Exp_( Token id ) {
     int type = UNDEFINE;
     if ( Match_( LPAR ) ) {
-      gData.Get_Func_Info( id, type );
+      FuncInfo info = gData.Get_Func_Info( id );
       if ( Actual_Parameter_List_() ) {
         // TODO
       } // if
@@ -1168,7 +1360,6 @@ private:
   // * rest_of_PPMM_Identifier_started_basic_exp : [ '[' expression ']' ] romce_and_romloe 
   bool Rest_Of_PPMM_Id_Started_Basic_Exp_( Token id ) {
     int type = UNDEFINE;
-    gData.Get_Var_Addr( id, type );
     if ( Match_( LSQB ) ) {
       if ( Exp_() ) {
         if ( !Match_( RSQB ) )
@@ -1495,7 +1686,6 @@ private:
       if ( Match_( IDENTIFER ) ) {
         Token id = mToken_;
         int type = UNDEFINE;
-        gData.Get_Var_Addr( id, type );
         if ( Match_( LSQB ) ) {
           if ( Exp_() ) {
             if ( !Match_( RSQB ) )
@@ -1520,7 +1710,6 @@ private:
       Token id = mToken_;
       int type =UNDEFINE;
       if ( Match_( LPAR ) ) {
-        gData.Get_Func_Info( id, type );
         if ( Actual_Parameter_List_() ) {
           // TODO
         } // if
@@ -1537,7 +1726,6 @@ private:
         } // if
 
       } // else if
-      gData.Get_Var_Addr( id, type );
       return true;
     } // i
     else if ( Match_( CONSTANT ) ) {
@@ -1565,7 +1753,6 @@ private:
       Token id = mToken_;
       int type;
       if ( Match_( LPAR ) ) {
-        gData.Get_Func_Info( id, type );
         if ( Actual_Parameter_List_() ) {
           // TODO
         } // if
@@ -1584,7 +1771,6 @@ private:
           } // if
         } // if
 
-        gData.Get_Var_Addr( id, type );
         if ( Match_( PP ) || Match_( MM ) ) {
           // TODO
         } // if
@@ -1638,23 +1824,38 @@ public:
 
 };
 
+class Stack {
+private:
+  vector<Variable> mStack_;
+public:
+  void Push( Variable var ) {
+    mStack_.push_back( var );
+  } // Push()
+
+  Variable Pop() {
+    Variable var;
+    if ( mStack_.empty() )
+      throw string( "Stack empty" );
+    else 
+      Variable var = *mStack_.end();
+
+    mStack_.pop_back();
+    return var;
+  } // Pop()
+
+};
+
 class Runner {
 private:
   int mPc;
-  vector <InterCode> mCodes_;
+  // * Stack of Virtual manchine, 
+  Stack mStack_;
 public:
   Runner() {
-    mPc = 0;
+    
   } // Runner()
-  void Eval( vector<InterCode> new_codes ) {
-    InterCode cur_line;
-    mCodes_.insert( mCodes_.end(),  new_codes.begin(), new_codes.end() );
-    while ( mPc < mCodes_.size() ) {
-      cur_line = mCodes_[mPc];
+  
 
-    } // while
-
-  } // Eval()
 };
 
 int main() {
@@ -1667,15 +1868,18 @@ int main() {
   do {
     cout << "> ";
     try {
-      runner.Eval( parser.Parse() );
+      
       
     } // try
     catch( Error_Info error_info ) {
-      error_info.Print_Msg();
+      error_info.PrintMsg();
       parser.Reset( error_info.Error_Line() );
     } // catch
     catch( bool stop ) { // * Catch Done();
       done = true;
+    } // catch
+    catch( string msg ) { // * For debug
+      cout << msg << endl;
     } // catch
   } while ( !done ); // TODO solve the problem of EOF
   cout << "Our-C exited ..." << endl;
