@@ -4,6 +4,7 @@
 # include <iostream>
 # include <iomanip>
 # include <stdlib.h>
+# include <sstream>
 
 using namespace std;
 
@@ -62,8 +63,7 @@ enum Type {
   COMMA,       // ,
   QUE,         // ?
   COLON,       // :
-  BACKSLASH,
-  // * Operater
+  BACKSLASH
 };
 
 // * 1 : unrecognized token with first char
@@ -83,18 +83,20 @@ public:
 
   void PrintMsg() {
     string msg = "Line ";
-    msg += to_string( mLine_ );
+    stringstream ss;
+    ss << mLine_;
+    msg += ss.str();
     msg += " : ";
-    if ( mType_ = 1 ) 
+    if ( mType_ == 1 ) 
       msg += "unrecognized token with first char : '";
-    else if ( mType_ = 2 )
+    else if ( mType_ == 2 )
       msg += "unexpected token : '";
     else msg += "undefined identifier : '";
 
     msg += mName_;
     msg += "'";
     cout << msg << endl;
-  } // Print_Msg()
+  } // PrintMsg()
 
   int Error_Line() {
     return mLine_;
@@ -121,7 +123,7 @@ public:
 
   void Stm() {
     mType_ = 0;
-  } // Set_Type()
+  } // Stm()
   // * New func id_name
   void Definition( bool is_new, bool is_func, string name ) {
     mType_ = 1;
@@ -134,9 +136,9 @@ public:
     if ( mType_ == 0 ) {
       cout << "Statement executed ..." << endl;
     } // if 
-    else if ( mType_ == 1 ){
+    else if ( mType_ == 1 ) {
       string msg;
-      for ( int i = 0; i < mId_.size(); i++ ) {
+      for ( int i = 0; i < mId_.size() ; i++ ) {
         if ( mIs_New_Def_[i] )
           msg = "New definition of ";
         else 
@@ -153,7 +155,7 @@ public:
 
     } // else if
     
-  } // Print
+  } // Print()
 };
 
 // * mConstant_Type : TRUE_CONS | FALSE_CONS | INT 
@@ -213,7 +215,15 @@ public:
 
   void LineReset() {
     mLine_ = 1;
-  } // Line_Reset()
+  } // LineReset()
+  // * Print this token
+  void Print() {
+    if ( mConstant_Type_ != STR_CONS && mConstant_Type_ != CHAR_CONS ) 
+      cout << mName_;
+    else if ( mConstant_Type_ == CHAR_CONS )
+      cout << "'" << mName_ << "'";
+    else  cout << "\"" << mName_ << "\"" ;
+  } // Print()
 
 };
 
@@ -222,14 +232,14 @@ private:
   vector<string> mPool_;
 public:
   int Get_Addr( string str ) {
-    int i = 0;
-    for (; i < mPool_.size(); i++ )
+    
+    for ( int i = 0; i < mPool_.size() ; i++ )
       if ( str == mPool_[i] )
         return i;
     
     mPool_.push_back( str );
-    return i;
-  } // int Get_Addr()
+    return mPool_.size() - 1;
+  } // Get_Addr()
 
   string Load_Str( int addr ) {
     return mPool_[addr];
@@ -260,6 +270,10 @@ public:
   int Frame_Space() {
     return ( mArray_ == 0 ) ?  1 :  mArray_;
   } // Frame_Space()
+
+  int Type() {
+    return mType_;
+  } // Type()
 };
 
 class Variable {
@@ -289,16 +303,16 @@ public:
       if ( type == INT || type == FLOAT ) 
         mValue_ = atof( str.c_str() );
       else if ( type == CHAR )
-        mValue_ = str.front();
+        mValue_ = str[0];
       else 
         mValue_ = gStr_Pool.Get_Addr( str );
 
     } // else 
   } // Variable()
 
-  VarType Type() {
+  VarType Var_Type() {
     return mType_;
-  } // Type()
+  } // Var_Type()
 
   float Value() {
     return mValue_;
@@ -312,15 +326,21 @@ private:
   string mName_;
   int mAddr_;
 public:
+  VarId() {
+    mType_ = Var_Type();
+    mName_ = "";
+    mAddr_ = 0;
+  } // VarId()
+
   VarId( VarType type, string name, int addr ) {
     mType_ = type;
     mName_ = name;
     mAddr_ = addr;
   } // VarId()
 
-  VarType Type() {
+  VarType Var_Type() {
     return mType_;
-  } // Type()
+  } // Var_Type()
 
   string Name() {
     return mName_;
@@ -339,13 +359,19 @@ private:
   int mAddr_;
   vector<Token> mFunc_Code_;
 public:
+  FuncInfo() {
+    mType_ = VarType();
+    mName_ = "";
+    mAddr_ = 0;
+  } // FuncInfo()
+
   FuncInfo( int type, string name, vector<VarType> type_list, int addr, vector<Token> func_code ) {
     mType_ = VarType( type, false, 0 );
     mName_ = name;
     mType_List_ = type_list;
     mAddr_ = addr;
     mFunc_Code_ = func_code;
-  } // FuncId()
+  } // FuncInfo()
 
   VarType Type() {
     return mType_;
@@ -363,6 +389,10 @@ public:
     return mType_List_.size();
   } // Parm()
 
+  vector<Token> Code() {
+    return mFunc_Code_;
+  } // Code()
+
 };
 
 class ConstantPool {
@@ -371,25 +401,24 @@ private:
   vector<Variable> mVars_;
   
 public:
-  Variable Get_Var( Token token ) {
+  int Get_Addr( Token token ) {
     string name = token.Name();
     int i = 0;
-    while ( i < mNames_.size() ) {
+    for ( i = 0 ; i < mNames_.size() ; i++ )
       if ( mNames_[i] == name ) 
-        return mVars_[i];
-      else if ( name < mNames_[i] ) {
-        Variable var( token.Cons_Type(), name );
-        mNames_.insert( mNames_.begin() + i, name );
-        mVars_.insert( mVars_.begin() + i, var );
-        return var;
-      } // else 
-      else i++;
-      
-    } // for
+        return i;
     
     Variable var( token.Cons_Type(), name );
     mNames_.push_back( name );
     mVars_.push_back( var );
+    return i;
+  } // Get_Addr()
+
+  Variable Get_Var( int addr ) {
+    if ( addr > mNames_.size() ) 
+      throw string( "Segmentation fault ( Constant )" );
+    else 
+      return mVars_[addr];
   } // Get_Var()
 
 };
@@ -409,14 +438,14 @@ public:
 
   void MakeStackFrame( int frame_size ) {
     Variable var;
-    for ( int i = 0; i < frame_size; i++ )
+    for ( int i = 0; i < frame_size ; i++ )
       mData_.push_back( var );
-  } // Make_Stack_Frame()
+  } // MakeStackFrame()
 
   int Alloc_Data( int frame_size ) {
     Variable var;
     int addr = mStack_Begin_;
-    for ( int i = 0; i < frame_size; i++, mStack_Begin_++ )
+    for ( int i = 0; i < frame_size ; i++, mStack_Begin_++ )
       mData_.insert( mData_.begin(), var );
 
     return addr;
@@ -445,7 +474,7 @@ enum Instr {
   // * Load address than push it in to stack
   LOAD_ADDR,
   // * Load Constant than push it in to stack
-  LOAC_CONS,
+  LOAD_CONS,
   // * just the names of the (global) variables
   LIST_ALL_VAR,
   // * just the names of the (user-defined)
@@ -454,7 +483,9 @@ enum Instr {
   LIST_VAR,
   // * the definition of a particular function, arg pop from Stack
   LIST_FUNC,
-  DONE
+  DONE,
+  // * Call Func
+  CALL
 
 };
 
@@ -492,12 +523,7 @@ public:
 
 class Data {
 private:
-  vector<VarId> mGlobal_Var_Id_Table_;
-  vector<VarId> mLocal_Var_Id_Table_;
-  vector<FuncInfo> mFunc_Table_;
-  vector<InterCode> mCode_;
   int mFunc_Code_End_;
-  ConstantPool mCons_Pool_;
   Mem mMem_;
 
   void Error_( Token token ) {
@@ -507,72 +533,86 @@ private:
 
 public:
   PrettyPrint mPretty_Print;
+  ConstantPool mCons_Pool;
+  vector<InterCode> mCode;
+  vector<VarId> mGlobal_Var_Id_Table;
+  vector<VarId> mLocal_Var_Id_Table;
+  vector<FuncInfo> mFunc_Table;
 
   Data() {
   } // Data()
   // * New Definition return true, Definition return false
   bool Define_Var( bool global,  VarType var_type, string name ) {
     int addr = 0;
-    vector<VarId> *table;
+    vector<VarId>::iterator i, end;
     if ( global ) {
       addr = mMem_.Alloc_Data( var_type.Frame_Space() );
-      table = &mGlobal_Var_Id_Table_;
+      i = mGlobal_Var_Id_Table.begin();
+      end = mGlobal_Var_Id_Table.end();
     } // if
     else {
-      addr = mLocal_Var_Id_Table_.size();
-      table = &mLocal_Var_Id_Table_;
+      addr = mLocal_Var_Id_Table.size();
+      i = mLocal_Var_Id_Table.begin();
+      end = mLocal_Var_Id_Table.end();
     } // else
 
-    VarId var_id( var_type , name, addr ); 
-    for ( int i = 0; i < table->size(); i++ ) {
-      if ( table->at( i ).Name() == name ) {
-        table->at( i ) = var_id;
+    VarId var_id( var_type, name, addr ); 
+    while ( i != end ) {
+      if ( i->Name() == name ) {
+        *i = var_id;
         return true;
       } // if
-      else if ( name < table->at( i ).Name() ) {
-        table->insert( table->begin() + i, var_id );
+      else if ( name < i->Name() ) {
+        if ( global )
+          mGlobal_Var_Id_Table.insert( i, var_id );
+        else 
+          mLocal_Var_Id_Table.insert( i, var_id );
         return false;
       } // else if
 
-    } // for
-
-    table->push_back( var_id );
+      i++;
+    } // while
+    
+    if ( global )
+      mGlobal_Var_Id_Table.push_back( var_id );
+    else mLocal_Var_Id_Table.push_back( var_id );
     return false;
-  } // Define
+  } // Define_Var()
   // * If id defined, will return VarId.
   VarId Get_VarId( Token token ) {
     string name = token.Name();
-    vector<VarId> *table = &mLocal_Var_Id_Table_;
-    vector<VarId>::iterator ptr = table->begin();
+    vector<VarId>::iterator ptr = mLocal_Var_Id_Table.begin(), end = mLocal_Var_Id_Table.end();
     do {
-      while ( ptr != table->end() ) {
+      while ( ptr != end ) {
         if ( ptr->Name() == name )
           return *ptr;
         else ptr++;
       } // while
 
-      table = &mGlobal_Var_Id_Table_;
-      ptr = table->begin();
-    } while ( ptr != table->end() );
+      end = mGlobal_Var_Id_Table.end();
+      ptr = mGlobal_Var_Id_Table.begin();
+    } while ( ptr != end );
 
     Error_( token );
-  } // Get_Addr()
+    VarId varid;
+    return varid;
+  } // Get_VarId()
 
   bool Define_Func( int type, string name, vector<VarType> type_list, vector<Token> func_code ) {
     int addr = mFunc_Code_End_;
     FuncInfo id( type, name, type_list, addr, func_code );
     int index = 0;
     do {
-      if ( index == mFunc_Table_.size() ) {
-        mFunc_Table_.push_back( id );
+      if ( index == mFunc_Table.size() ) {
+        mFunc_Table.push_back( id );
         return false;
       } // if
-      else if ( mFunc_Table_[index].Name() == name ) {
-        mFunc_Table_[index] = id;
+      else if ( mFunc_Table[index].Name() == name ) {
+        mFunc_Table[index] = id;
         return true;
       } // else if
-      else if ( mFunc_Table_[index].Name() < name ) {
-        mFunc_Table_.insert( mFunc_Table_.begin() + index, id );
+      else if ( mFunc_Table[index].Name() < name ) {
+        mFunc_Table.insert( mFunc_Table.begin() + index, id );
         return true;
       } // else if
   
@@ -610,33 +650,38 @@ public:
       return info;
     } // else if
     else {
-      for ( int i = 0; i < mFunc_Table_.size(); i++ ) 
-        if( mFunc_Table_[i].Name() == name )
-          return mFunc_Table_[i];
+      for ( int i = 0; i < mFunc_Table.size() ; i++ ) 
+        if ( mFunc_Table[i].Name() == name )
+          return mFunc_Table[i];
     } // else
     
     Error_( token );
-  } // Get_Func_Addr()
+    return FuncInfo();
+  } // Get_Func_Info()
 
   int Local_Table_End() {
-    return mLocal_Var_Id_Table_.size();
-  } // Local_Table_Start()
+    return mLocal_Var_Id_Table.size();
+  } // Local_Table_End()
 
   void LocalIdDelete( int index ) {
-    mLocal_Var_Id_Table_.erase( mLocal_Var_Id_Table_.begin() + index, mLocal_Var_Id_Table_.end() );
-  } // Local_Id_Delete()
+    mLocal_Var_Id_Table.erase( mLocal_Var_Id_Table.begin() + index, mLocal_Var_Id_Table.end() );
+  } // LocalIdDelete()
 
   void ResetLocalTable() {
-    mLocal_Var_Id_Table_.clear();
-  } // Reset_Local_Table()
+    mLocal_Var_Id_Table.clear();
+  } // ResetLocalTable()
 
   void CodeInsert( bool is_func, vector<InterCode> new_code ) {
     if ( is_func ) {
-      mCode_.insert( mCode_.begin() + mFunc_Code_End_, new_code.begin(), new_code.end() );
+      mCode.insert( mCode.begin() + mFunc_Code_End_, new_code.begin(), new_code.end() );
       mFunc_Code_End_ += new_code.size();
     } // if
-    else mCode_.insert( mCode_.end(), new_code.begin(), new_code.end() );
-  } // Code_Insert()
+    else mCode.insert( mCode.end(), new_code.begin(), new_code.end() );
+  } // CodeInsert()
+
+  int Main_Start() {
+    return mFunc_Code_End_;
+  } // Main_Start()
 };
 
 Data gData;
@@ -681,7 +726,7 @@ private:
     else if ( ch == ']' ) return RSQB;
     else if ( ch == '{' ) return LBRACE;
     else if ( ch == '}' ) return RBRACE;
-    else if (ch == '+' ) return PLUS;
+    else if ( ch == '+' ) return PLUS;
     else if ( ch == '-' ) return MINUS;
     else if ( ch == '*' ) return STAR;
     else if ( ch == '/' ) return SLASH;
@@ -704,7 +749,8 @@ private:
     else if ( ch == '\n' ) return NEWLINE;
     else if ( ch == '\0' ) return PL_EOF;
     else if ( ch == '_' ) return UNDERLINE;
-    else if ( ch == '\'') return QUOT;
+    else if ( ch == '.' ) return DOT;
+    else if ( ch == '\'' ) return QUOT;
     else if ( ch == '\\' ) return BACKSLASH;
     else if ( ch == '"' ) return QUOTQUOT;
     else return OTHER;
@@ -748,7 +794,7 @@ public:
   void Line_Counter_Reset() {
     mCurrent_Line_ = 1;
     mNext_Token.LineReset();
-  } // Zero()
+  } // Line_Counter_Reset()
 
   Token Peek_Token() {
     int type, state = 0, line = 1;
@@ -797,11 +843,11 @@ public:
               interupt = true;
             } // if
             else if ( type == BACKSLASH ) {
-              token_name += Get_Char_(); // * Back Slash
+              // token_name += Get_Char_(); // * Back Slash
               token_name += Get_Char_(); // * Char follow back slash
             } // else if 
             else if ( type == NEWLINE )
-              throw "Missing Closed '";
+              throw string( "Missing Closed" );
           } // else if
           else if ( state == IDENTIFER ) {
             if ( type != LETTER && type != DIGIT && type != UNDERLINE )
@@ -819,13 +865,13 @@ public:
             type == AMPER ? state = AND : interupt = true; // && or &
           else if ( state == VBAR )
             type == VBAR ? state = VBAR : interupt = true; // || or |
-          else if ( state = PLUS )
+          else if ( state == PLUS )
             type == EQ ? state = PE : ( type == PLUS ? state = PP : interupt = true );
-          else if ( state = MINUS )
+          else if ( state == MINUS )
             type == EQ ? state = ME : ( type == MINUS ? state = MM : interupt = true );
-          else if ( state = STAR )
+          else if ( state == STAR )
             type == EQ ? state = TE : interupt = true; // *= or *
-          else if ( state = SLASH ) {
+          else if ( state == SLASH ) {
             if ( type == SLASH ) { // Comment
               Buffer_Clear();
               return Peek_Token();
@@ -882,9 +928,27 @@ private:
       mToken_ = mScn_.Get_Token();
       mRecord_Code_.push_back( mToken_ );
       return true;
-    }
+    } // if
     else return false;
   } // Match_()
+
+  void CallFunc( Token id ) {
+    InterCode code;
+    FuncInfo info = gData.Get_Func_Info( id );
+    if ( info.Addr() == -1 ) // ListAllVariables()
+      code = InterCode( LIST_ALL_VAR, false, 0 );
+    else if ( info.Addr() == -2 )
+      code = InterCode( LIST_ALL_FUNC, false, 0 );
+    else if ( info.Addr() == -3 )
+      code = InterCode( LIST_VAR, false, 0 );
+    else if ( info.Addr() == -4 )
+      code = InterCode( LIST_FUNC, false, 0 );
+    else if ( info.Addr() == -5 ) 
+      code = InterCode( DONE, false, 0 );
+    else code = InterCode( CALL, false, info.Addr() );
+    
+    mCodes_.push_back( code );
+  } // CallFunc()
 
   // * user_input : ( definition | statement ) { definition | statement }
   bool User_Input_() {
@@ -894,6 +958,7 @@ private:
     } // if
     else if ( Statement_() ) {
       gData.mPretty_Print.Stm();
+      gData.CodeInsert( false, mCodes_ );
     } // else if
     else return false;
 
@@ -915,6 +980,7 @@ private:
         else Error_();
 
       } // if
+
       Error_();
     } // if
     else if ( Type_Specifier_() ) {
@@ -928,8 +994,9 @@ private:
       } // if
 
       Error_();
-    } // else
-    else return false;
+    } // else if
+
+    return false;
   } // Definition_()
   // * type_specifier : INT | CHAR | FLOAT | STRING | BOOL
   bool Type_Specifier_() {
@@ -944,6 +1011,7 @@ private:
       return true;
     } // if
     else if ( Rest_Of_Delc_( type, id, true ) ) {
+      gData.CodeInsert( false, mCodes_ );
       return true;
     } // else if
     else return false;
@@ -998,8 +1066,9 @@ private:
       else Error_();
 
     } // while
+
     if ( Match_( SEMI ) ) {
-      for ( int i = 0; i < new_id.size(); i++ ) {
+      for ( int i = 0; i < new_id.size() ; i++ ) {
         VarType var_type( type, false, new_array[i] );
         bool is_new = gData.Define_Var( global, var_type, new_id[i] );
         if ( global ) gData.mPretty_Print.Definition( is_new, false, new_id[i] );
@@ -1010,6 +1079,7 @@ private:
     } // if
     else Error_();
 
+    return false;
   } // Rest_Of_Delc_()
   // * function_definition_without_ID : '(' [ VOID | formal_parameter_list ] ')' compound_statement
   bool Func_Def_Without_Id_( int type, string id ) {
@@ -1020,7 +1090,7 @@ private:
         // TODO
       } // if
       else if ( Formal_Parameter_List_( type_list, id_list ) ) {
-        for ( int i = 0; i < type_list.size(); i++ ) 
+        for ( int i = 0; i < type_list.size() ; i++ ) 
           gData.Define_Var( false, type_list[i], id_list[i] );
         
       } // else if
@@ -1039,7 +1109,8 @@ private:
       
       Error_();
     } // if
-    else return false;
+
+    return false;
   } // Func_Def_Without_Id_()
   // * formal_parameter_list : type_specifier [ '&' ] Identifier [ '[' Constant ']' ] 
   // *                         { ',' type_specifier [ '&' ] Identifier [ '[' Constant ']' ] }
@@ -1055,11 +1126,11 @@ private:
         
         if ( Match_( IDENTIFER ) ) {
           Token id = mToken_;
-          if( Match_( LSQB ) ) {
+          if ( Match_( LSQB ) ) {
             if ( Match_( CONSTANT ) ) {
               array_num = atoi( mToken_.Name().c_str() );
               if ( !Match_( RSQB ) ) 
-                Error_;
+                Error_();
               
             } // if
             else Error_();
@@ -1072,10 +1143,10 @@ private:
           id_list.push_back( id.Name() );
         } // if
         else Error_();
-      }
+      } // if
       else if ( second_time ) 
         Error_();
-      else false;
+      else return false;
 
       second_time = true;
     } while ( Match_( COMMA ) );
@@ -1097,6 +1168,8 @@ private:
       else Error_();
 
     } // if
+
+    return false;
   } // Compound_Statement_()
   // * declaration : type_specifier Identifier rest_of_declarators
   // * local Variable define
@@ -1117,7 +1190,8 @@ private:
       else Error_();
 
     } // if
-    else false;
+
+    return false;
   } // Decl_()
   // * statement : ';'     // the null statement
   // *           | expression ';'  /* expression here should not be empty */
@@ -1163,7 +1237,7 @@ private:
               if ( Match_( ELSE ) ) {
                 if ( Statement_() ) {
                   // TODO
-                } /// if
+                } // if
                 else Error_();
 
               } // if
@@ -1180,7 +1254,7 @@ private:
       else Error_();
     } // else if
     else if ( Match_( WHILE ) ) {
-      if( Match_( LBRACE ) ) {
+      if ( Match_( LBRACE ) ) {
         if ( Exp_() ) {
           if ( Match_( LBRACE ) ) {
             if ( Statement_() ) {
@@ -1221,8 +1295,8 @@ private:
       else Error_();
 
     } // else if
-    else return false;
 
+    return false;
   } // Statement_()
   // * expression : basic_expression { ',' basic_expression }
   bool Exp_() {
@@ -1232,7 +1306,7 @@ private:
         // TODO
         return true;
       } // if
-      else if ( second_time ) Error_; // basic_expr, ;
+      else if ( second_time ) Error_(); // basic_expr, ;
       else return false;
 
       second_time = true;
@@ -1267,9 +1341,10 @@ private:
 
     } // else if
     else if ( Sign_() ) {
-      while( Sign_() ) {
+      while ( Sign_() ) {
         // TODO
       } // while
+
       if ( Signed_Unary_Exp_() ) {
         if ( Romce_And_Romloe_() ) {
           return true;
@@ -1278,9 +1353,9 @@ private:
       } // if
       else Error_();
 
-    } // else 
+    } // else if
     else if ( Match_( CONSTANT ) || Match_( LPAR ) ) {
-      if( mToken_.Token_Type() == LPAR ) {
+      if ( mToken_.Token_Type() == LPAR ) {
         if ( Exp_() ) {
           if ( !Match_( RPAR ) ) 
             Error_();
@@ -1290,7 +1365,9 @@ private:
 
       } // if
       else {
-        // TODO CONSTANT exp
+        int addr = gData.mCons_Pool.Get_Addr( mToken_ );
+        InterCode code( LOAD_CONS, false, addr );
+        mCodes_.push_back( code );
       } // else
       
       if ( Romce_And_Romloe_() ) 
@@ -1298,8 +1375,8 @@ private:
       else Error_();
 
     } // else if
-    else return false;
-
+    
+    return false;
   } // Basic_Exp_()
   // * rest_of_Identifier_started_basic_exp : [ '[' expression ']' ]
   // *                                        ( assignment_operator basic_expression 
@@ -1310,11 +1387,12 @@ private:
   bool Rest_Of_Id_Started_Basic_Exp_( Token id ) {
     int type = UNDEFINE;
     if ( Match_( LPAR ) ) {
-      FuncInfo info = gData.Get_Func_Info( id );
       if ( Actual_Parameter_List_() ) {
         // TODO
       } // if
+
       if ( Match_( RPAR ) ) {
+        CallFunc( id );
         if ( Romce_And_Romloe_() ) {
 
           return true;
@@ -1353,7 +1431,8 @@ private:
 
     } // else
     
-  } // Rest_Of_Id_Stated_Basic_Exp_()
+    return false;
+  } // Rest_Of_Id_Started_Basic_Exp_()
   // * rest_of_PPMM_Identifier_started_basic_exp : [ '[' expression ']' ] romce_and_romloe 
   bool Rest_Of_PPMM_Id_Started_Basic_Exp_( Token id ) {
     int type = UNDEFINE;
@@ -1367,8 +1446,7 @@ private:
 
     if ( Romce_And_Romloe_() )
       return true;
-    else return false;
-
+    return false;
   } // Rest_Of_PPMM_Id_Started_Basic_Exp_()
   // * sign : '+' | '-' | '!'
   bool Sign_() {
@@ -1384,20 +1462,21 @@ private:
       } // while
 
       return true;
-    } //if
+    } // if
     else return false;
   } // Actual_Parameter_List_()
   // * assignment_operator : '=' | TE (*=) | DE (/=) | RE (%=) | PE(+=) | ME(-=)
   bool Assignment_Op_() {
     return Match_( EQ ) || Match_( TE ) || Match_( RE ) || Match_( PE ) || Match_( ME );
   } // Assignment_Op_()
-  // * rest_of_maybe_conditional_exp_and_rest_of_maybe_logical_OR_exp : rest_of_maybe_logical_OR_exp [ '?' basic_expression ':' basic_expression ]
+  // * rest_of_maybe_conditional_exp_and_rest_of_maybe_logical_OR_exp : rest_of_maybe_logical_OR_exp 
+  // *            [ '?' basic_expression ':' basic_expression ]
   bool Romce_And_Romloe_() {
     if ( Rest_Of_Maybe_Logical_Or_Exp_() ) {
       if ( Match_( QUE ) ) {
         if ( Basic_Exp_() ) {
           if ( Match_( COLON ) ) {
-            if (!Basic_Exp_() ) 
+            if ( !Basic_Exp_() ) 
               Error_();
 
           } // if
@@ -1406,7 +1485,7 @@ private:
         } // if
         else Error_();
 
-      } //if 
+      } // if 
 
       return true;
     } // if 
@@ -1461,11 +1540,11 @@ private:
       return true;
     } // if
     else return false;
-  } // Maybe_bit_Or_Exp_()
-  // * rest_of_maybe_bit_OR_exp : rest_of_maybe_bit_ex_OR_exp { '|' maybe_bit_ex_OR_exp }
+  } // Maybe_Bit_Or_Exp_()
+    // * rest_of_maybe_bit_OR_exp : rest_of_maybe_bit_ex_OR_exp { '|' maybe_bit_ex_OR_exp }
   bool Rest_Of_Maybe_Bit_Or_Exp_() {
     if ( Rest_Of_Maybe_Bit_Ex_Or_Exp_() ) {
-      while( Match_( VBAR ) ) {
+      while ( Match_( VBAR ) ) {
         if ( !Maybe_Bit_Ex_Or_Exp_() )
           Error_();
       } // while
@@ -1565,7 +1644,7 @@ private:
       } // while
 
       return true;
-    } // if
+    } // if()
     else return false;
   } // Maybe_Relational_Exp_()
   // * rest_of_maybe_relational_exp : rest_of_maybe_shift_exp 
@@ -1583,7 +1662,7 @@ private:
     } // if
     else return false;
   } // Rest_Of_Maybe_Relational_Exp_()
-// * maybe_shift_exp : maybe_additive_exp { ( LS | RS ) maybe_additive_exp }
+  // * maybe_shift_exp : maybe_additive_exp { ( LS | RS ) maybe_additive_exp }
   bool Maybe_Shift_Exp_() {
     if ( Maybe_Additive_Exp_() ) {
       while ( Match_( LS ) || Match_( RS ) ) {
@@ -1594,10 +1673,10 @@ private:
       } // while
 
       return true;
-    } //if
+    } // if
     else return false;
   } // Maybe_Shift_Exp_()
-// * rest_of_maybe_shift_exp : rest_of_maybe_additive_exp { ( LS | RS ) maybe_additive_exp }
+  // * rest_of_maybe_shift_exp : rest_of_maybe_additive_exp { ( LS | RS ) maybe_additive_exp }
   bool Rest_Of_Maybe_Shift_Exp_() {
     if ( Rest_Of_Maybe_Additive_Exp_() ) {
       while ( Match_( LS ) || Match_( RS ) ) {
@@ -1608,13 +1687,13 @@ private:
       } // while
 
       return true;
-    } //if
+    } // if
     else return false;
   } // Rest_Of_Maybe_Shift_Exp_()
-// * maybe_additive_exp : maybe_mult_exp { ( '+' | '-' ) maybe_mult_exp }
+  // * maybe_additive_exp : maybe_mult_exp { ( '+' | '-' ) maybe_mult_exp }
   bool Maybe_Additive_Exp_() {
     if ( Maybe_Mult_Exp_() ) {
-      while ( Match_( PLUS) || Match_( MINUS ) ) {
+      while ( Match_( PLUS ) || Match_( MINUS ) ) {
         if ( Maybe_Mult_Exp_() ) {
           // TODO
         } // if
@@ -1625,10 +1704,10 @@ private:
     } // if
     else return false;
   } // Maybe_Additive_Exp_()
-// * rest_of_maybe_additive_exp : rest_of_maybe_mult_exp { ( '+' | '-' ) maybe_mult_exp }
+  // * rest_of_maybe_additive_exp : rest_of_maybe_mult_exp { ( '+' | '-' ) maybe_mult_exp }
   bool Rest_Of_Maybe_Additive_Exp_() {
     if ( Rest_Of_Maybe_Mult_Exp_() ) {
-      while ( Match_( PLUS) || Match_( MINUS ) ) {
+      while ( Match_( PLUS ) || Match_( MINUS ) ) {
         if ( Maybe_Mult_Exp_() ) {
           // TODO
         } // if
@@ -1639,17 +1718,19 @@ private:
     } // if
     else return false;   // TODO
   } // Rest_Of_Maybe_Additive_Exp_()
-// * maybe_mult_exp : unary_exp rest_of_maybe_mult_exp
+  // * maybe_mult_exp : unary_exp rest_of_maybe_mult_exp
   bool Maybe_Mult_Exp_() {
     if ( Unary_Exp_() ) {
       if ( Rest_Of_Maybe_Mult_Exp_() ) {
         // TODO
+        return true;
       } // if
       else Error_();
     } // if
-    else return false;
+
+    return false;
   } // Maybe_Mult_Exp_()
-// * rest_of_maybe_mult_exp : { ( '*' | '/' | '%' ) unary_exp }  /* could be empty ! */
+  // * rest_of_maybe_mult_exp : { ( '*' | '/' | '%' ) unary_exp }  /* could be empty ! */
   bool Rest_Of_Maybe_Mult_Exp_() {
     while ( Match_( STAR ) || Match_( SLASH ) || Match_( PERCENT ) ) {
       if ( Unary_Exp_() ) {
@@ -1660,9 +1741,9 @@ private:
 
     return true;
   } // Rest_Of_Maybe_Mult_Exp_()
-// * unary_exp : sign { sign } signed_unary_exp
-// *           | unsigned_unary_exp
-// *           | ( PP | MM ) Identifier [ '[' expression ']' ]
+  // * unary_exp : sign { sign } signed_unary_exp
+  // *           | unsigned_unary_exp
+  // *           | ( PP | MM ) Identifier [ '[' expression ']' ]
   bool Unary_Exp_() {
     if ( Sign_() ) {
       while ( Sign_() ) {
@@ -1682,7 +1763,7 @@ private:
     else if ( Match_( PP ) || Match_( MM ) ) {
       if ( Match_( IDENTIFER ) ) {
         Token id = mToken_;
-        int type = UNDEFINE;
+        gData.Get_VarId( id );
         if ( Match_( LSQB ) ) {
           if ( Exp_() ) {
             if ( !Match_( RSQB ) )
@@ -1690,23 +1771,25 @@ private:
           } // if
           else Error_();
         } // if
+
         return true;
       } // if
       else Error_();
     } // else if
-    else return false;
+
+    return false;
   } // Unary_Exp_()
-// * signed_unary_exp : Identifier [ '(' [ actual_parameter_list ] ')' 
-// *                               |
-// *                                 '[' expression ']'
-// *                               ]
-// *                  | Constant 
-// *                  | '(' expression ')'
+  // * signed_unary_exp : Identifier [ '(' [ actual_parameter_list ] ')' 
+  // *                               |
+  // *                                 '[' expression ']'
+  // *                               ]
+  // *                  | Constant 
+  // *                  | '(' expression ')'
   bool Signed_Unary_Exp_() {
     if ( Match_( IDENTIFER ) ) {
       Token id = mToken_;
-      int type =UNDEFINE;
       if ( Match_( LPAR ) ) {
+        gData.Get_Func_Info( id );
         if ( Actual_Parameter_List_() ) {
           // TODO
         } // if
@@ -1723,8 +1806,9 @@ private:
         } // if
 
       } // else if
+
       return true;
-    } // i
+    } // if
     else if ( Match_( CONSTANT ) ) {
       return true;
     } // else if
@@ -1737,19 +1821,21 @@ private:
       } // if
       else Error_();
     } // else if
-    else return false;
+
+    return false;
   } // Signed_Unary_Exp_()
-// * unsigned_unary_exp : Identifier [ '(' [ actual_parameter_list ] ')' 
-// *                                 |
-// *                                   [ '[' expression ']' ] [ ( PP | MM ) ]
-// *                                 ]
-// *                    | Constant 
-// *                    | '(' expression ')'
+  // * unsigned_unary_exp : Identifier [ '(' [ actual_parameter_list ] ')' 
+  // *                                 |
+  // *                                   [ '[' expression ']' ] [ ( PP | MM ) ]
+  // *                                 ]
+  // *                    | Constant 
+  // *                    | '(' expression ')'
   bool Unsigned_Unary_Exp_() {
     if ( Match_( IDENTIFER ) ) {
       Token id = mToken_;
       int type;
       if ( Match_( LPAR ) ) {
+        
         if ( Actual_Parameter_List_() ) {
           // TODO
         } // if
@@ -1762,7 +1848,7 @@ private:
       else {
         if ( Match_( LSQB ) ) {
           if ( Exp_() ) {
-            if ( !Match_(RSQB) )
+            if ( !Match_( RSQB ) )
               Error_();
           
           } // if
@@ -1788,13 +1874,15 @@ private:
       } // if
       else Error_();
     } // else if
-    else return false;
-  } // UNsigned_Unary_Exp_()
+
+    return false;
+  } // Unsigned_Unary_Exp_()
 
   void Error_() {
     Error_Info info( mToken_.Line(), 2, mToken_.Name() );
     throw info;
-  } // Error()
+  } // Error_()
+
 public:
   Parser() {
     mDone_ = false;
@@ -1804,18 +1892,18 @@ public:
 
   void Reset( int error_line ) {
     mToken_ = Token();
-    if( error_line == mScn_.Cur_Line() )
+    if ( error_line == mScn_.Cur_Line() )
       mScn_ = Scanner();
     else 
       mScn_.Line_Counter_Reset();
   } // Reset()
 
 
-  vector<InterCode> Parse() {
+  void Parse() {
+    mScn_.Line_Counter_Reset();
     mCodes_.clear();
-    if ( User_Input_() )
-      return mCodes_;
-    else Error_();
+    if ( !User_Input_() )
+      Error_();
       
   } // Parse()
 
@@ -1834,7 +1922,7 @@ public:
     if ( mStack_.empty() )
       throw string( "Stack empty" );
     else 
-      Variable var = *mStack_.end();
+      var = *mStack_.end();
 
     mStack_.pop_back();
     return var;
@@ -1844,14 +1932,142 @@ public:
 
 class Runner {
 private:
-  int mPc;
+  int mPc_;
   // * Stack of Virtual manchine, 
   Stack mStack_;
+
+  void ListAllVar_() {
+    vector<VarId> table = gData.mGlobal_Var_Id_Table;
+    for ( vector<VarId>::iterator i = table.begin(); i != table.end() ; i++ ) 
+      cout << i->Name() << endl;
+    
+    mPc_++;
+  } // ListAllVar_()
+
+  void ListAllFunc_() {
+    vector<FuncInfo> table = gData.mFunc_Table;
+    for ( vector<FuncInfo>::iterator i = table.begin() ; i != table.end() ; i++ )
+      cout << i->Name() << "()" << endl;
+
+    mPc_++;  
+  } // ListAllFunc_()
+
+  void ListVar_() {
+    Variable var = mStack_.Pop();
+    vector<VarId> table = gData.mGlobal_Var_Id_Table;
+    string id = gStr_Pool.Load_Str( var.Value() );
+    vector<VarId>::iterator i;
+    bool done = false;
+    for ( i = table.begin() ; i != table.end() && !done ; i++ ) {
+      if ( i->Name() == id ) {
+        int type = i->Var_Type().Type();
+        if ( type == INT )
+          cout << "int ";
+        else if ( type == CHAR ) 
+          cout << "char ";
+        else if ( type == FLOAT )
+          cout << "float ";
+        else 
+          cout << "string ";        
+
+        cout << i->Name() << " ;" << endl;
+        done = true;
+      } // if
+
+    } // for
+
+    mPc_++;
+  } // ListVar_()
+
+  void ListFunc_() {
+    Variable var = mStack_.Pop();
+    vector<FuncInfo> table = gData.mFunc_Table;
+    string id = gStr_Pool.Load_Str( var.Value() );
+    vector<FuncInfo>::iterator i;
+    bool done = false;
+    for ( i = table.begin() ; i != table.end() && !done ; i++ ) {
+      if ( i->Name() == id ) {
+        vector<Token> code = i->Code();
+        // TODO Print
+        done = true;
+      } // if
+
+    } // for
+
+    mPc_++;
+  } // ListFunc_()
+
+  void PrintSpace( int space ) {
+    for ( int i = 0; i < space ; i++ )
+      cout << "  ";
+  } // PrintSpace()
+
+  void PrintCode_( vector<Token> codes ) {
+    vector<Token>::iterator token;
+    int type = 0, next_type = 0;
+    int space = 0;
+    for ( token = codes.begin() ; token != codes.end() ; token++ ) {
+      type = token->Token_Type();
+      if ( token + 1 != codes.end() )
+        next_type = ( token + 1 )->Token_Type();
+      else next_type = 0;
+
+      token->Print();
+      if ( type == SEMI || type == LBRACE || type == RBRACE ) {
+        cout << endl;
+        if ( next_type != 0 ) {
+          if ( type == LBRACE ) // { \n SPACE
+            PrintSpace( ++space );
+          else if ( next_type == RBRACE )
+            PrintSpace( --space );
+          else PrintSpace( space );
+
+        } // if
+
+      } // if
+      // id( id[ id++ id-- ++id --id
+      else if ( ! ( type == IDENTIFER && 
+                    ( next_type == LPAR || next_type == RSQB || 
+                      next_type == PP || next_type == MM ) ) || 
+                ! ( ( type == PP  || type == MM ) && next_type == IDENTIFER ) ) 
+        cout << " ";
+      
+    } // for
+
+    mPc_++;
+  } // PrintCode_()
+
+  void Load_Cons_( int arg ) {
+    mStack_.Push( gData.mCons_Pool.Get_Var( arg ) );
+    mPc_++;
+  } // Load_Cons_()
+
 public:
   Runner() {
-    
+    mPc_ = 0;
   } // Runner()
-  
+
+  void Run() {
+    int i;
+    vector<InterCode> codes = gData.mCode;
+    InterCode cur_code;
+    for ( i = gData.Main_Start() + mPc_ ; i < codes.size() ; i = mPc_ ) {
+      cur_code = codes[i];
+      if ( cur_code.Instr() == DONE )
+        throw true;
+      else if ( cur_code.Instr() == LIST_ALL_VAR ) 
+        ListAllVar_();
+      else if ( cur_code.Instr() == LIST_ALL_FUNC )
+        ListAllFunc_();
+      else if ( cur_code.Instr() == LIST_VAR )
+        ListVar_();
+      else if ( cur_code.Instr() == LIST_FUNC )
+        ListFunc_();
+      else if ( cur_code.Instr() == LOAD_CONS )
+        Load_Cons_( cur_code.Parm() );
+      
+    } // for
+  } // Run()
 
 };
 
@@ -1865,7 +2081,9 @@ int main() {
   do {
     cout << "> ";
     try {
-      
+      parser.Parse();
+      runner.Run();
+      gData.mPretty_Print.Print();
       
     } // try
     catch( Error_Info error_info ) {

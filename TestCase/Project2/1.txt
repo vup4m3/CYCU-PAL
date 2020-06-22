@@ -1,0 +1,13 @@
+當測試「Test case 1 of 3」時，Input為>>1
+int x ;
+x=10;
+cout << x ;
+Done(); int x ; cout << y ;
+x = 10 ;
+<<
+
+正確的輸出應該是>>Our-C running ...
+> Definition of x entered ...
+> Statement executed ...
+> Statement executed ...
+> Our-C exited ...<<

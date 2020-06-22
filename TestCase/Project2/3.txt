@@ -1,0 +1,128 @@
+當測試「Test case 1 of 3」時，Input為>>1
+int x ;
+x=10;
+{ int x ;
+  x = 10 ;
+}
+cout << x ;
+string str ;
+str = "This is a fine day.\n" ;
+float y ;
+{ float yy ;
+  yy=y+yy;
+  yy=y
+  ; 
+}
+y = 20 ;
+Done(); int x ; cout << y ;
+x = 10 ;
+<<
+
+正確的輸出應該是>>Our-C running ...
+> Definition of x entered ...
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Definition of str entered ...
+> Statement executed ...
+> Definition of y entered ...
+> Statement executed ...
+> Statement executed ...
+> Our-C exited ...<<
+
+當測試「Test case 2 of 3」時，Input為>>2
+     
+    int  
+   x  
+ 
+   ;   
+ x=  
+   
+    10;
+
+    cout 
+    <<   
+x 
+
+   ;  
+{ int x 
+; 
+      int y;
+      y=x*2;
+}
+      x=20; 
+
+    int  
+   y  
+ 
+   ;   
+int z ;
+
+x =y+z
+- 2*x;
+3
+
+   -z;   
+
+int w ;   
+
+ w   
+  ++;
+string str 
+    ;
+
+str = 
+"This is a fine day.\n" ;
+str 
+= 
+str + "Isn't it?\n" 
+;
+cout<<str;   
+    float 
+     y 
+                        ;    
+     int x ;
+  { int x; 
+    int y;
+    x=x+y;    
+    int z;
+    
+    }
+    {}
+     y = 20 * ( x - 
+     
+     y ) / 34.5 ;
+cout << "Value of 'y' is now : " 
+      << y   
+      << "\n"    
+      ;
+      Done
+  (    
+    )    
+    ;   int y = 5 ;
+cout << y ;  
+<<
+
+正確的輸出應該是>>Our-C running ...
+> Definition of x entered ...
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Definition of y entered ...
+> Definition of z entered ...
+> Statement executed ...
+> Statement executed ...
+> Definition of w entered ...
+> Statement executed ...
+> Definition of str entered ...
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> New definition of y entered ...
+> New definition of x entered ...
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Our-C exited ...<<
