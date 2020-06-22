@@ -582,6 +582,10 @@ public:
   VarId Get_VarId( Token token ) {
     string name = token.Name();
     vector<VarId>::iterator ptr = mLocal_Var_Id_Table.begin(), end = mLocal_Var_Id_Table.end();
+    if ( name == "cout" )
+      return VarId();
+    else if ( name == "cin" )
+      return VarId();
     do {
       while ( ptr != end ) {
         if ( ptr->Name() == name )
@@ -589,8 +593,10 @@ public:
         else ptr++;
       } // while
 
-      end = mGlobal_Var_Id_Table.end();
-      ptr = mGlobal_Var_Id_Table.begin();
+      if ( ptr == mLocal_Var_Id_Table.end() ) {
+        end = mGlobal_Var_Id_Table.end();
+        ptr = mGlobal_Var_Id_Table.begin();
+      } // if 
     } while ( ptr != end );
 
     Error_( token );
@@ -602,21 +608,24 @@ public:
     int addr = mFunc_Code_End_;
     FuncInfo id( type, name, type_list, addr, func_code );
     int index = 0;
+    vector<FuncInfo>::iterator i = mFunc_Table.begin();
     do {
-      if ( index == mFunc_Table.size() ) {
+      if ( i == mFunc_Table.end() ) {
         mFunc_Table.push_back( id );
         return false;
       } // if
-      else if ( mFunc_Table[index].Name() == name ) {
-        mFunc_Table[index] = id;
+      else if ( i->Name() == name ) {
+        *i = id;
         return true;
       } // else if
-      else if ( mFunc_Table[index].Name() < name ) {
-        mFunc_Table.insert( mFunc_Table.begin() + index, id );
-        return true;
+      else if ( i->Name() < name ) {
+        mFunc_Table.insert( i, id );
+        return false;
       } // else if
-  
-    } while ( index++ );
+      else 
+        i++;
+
+    } while ( i != mFunc_Table.end() );
 
     return false;
   } // Define_Func()
@@ -650,9 +659,9 @@ public:
       return info;
     } // else if
     else {
-      for ( int i = 0; i < mFunc_Table.size() ; i++ ) 
-        if ( mFunc_Table[i].Name() == name )
-          return mFunc_Table[i];
+      for ( vector<FuncInfo>::iterator i = mFunc_Table.begin() ; i != mFunc_Table.end() ; i++ ) 
+        if ( i->Name() == name )
+          return *i;
     } // else
     
     Error_( token );
@@ -792,6 +801,8 @@ public:
   } // Buffer_Clear()
   
   void Line_Counter_Reset() {
+    if ( Peek_Char_() == '\n' )
+      Get_Char_();
     mCurrent_Line_ = 1;
     mNext_Token.LineReset();
   } // Line_Counter_Reset()
@@ -874,6 +885,7 @@ public:
           else if ( state == SLASH ) {
             if ( type == SLASH ) { // Comment
               Buffer_Clear();
+              mCurrent_Line_++;
               return Peek_Token();
             } // if 
             else if ( type == EQ ) // /=
@@ -1385,14 +1397,13 @@ private:
   // *                                        )
   // *                                      | '(' [ actual_parameter_list ] ')' romce_and_romloe
   bool Rest_Of_Id_Started_Basic_Exp_( Token id ) {
-    int type = UNDEFINE;
     if ( Match_( LPAR ) ) {
+      CallFunc( id );
       if ( Actual_Parameter_List_() ) {
         // TODO
       } // if
 
       if ( Match_( RPAR ) ) {
-        CallFunc( id );
         if ( Romce_And_Romloe_() ) {
 
           return true;
@@ -1404,6 +1415,7 @@ private:
       
     } // if
     else {
+      gData.Get_VarId( id );
       if ( Match_( LSQB ) ) {
         if ( Exp_() ) {
           if ( !Match_( RSQB ) ) 
@@ -1789,25 +1801,30 @@ private:
     if ( Match_( IDENTIFER ) ) {
       Token id = mToken_;
       if ( Match_( LPAR ) ) {
-        gData.Get_Func_Info( id );
         if ( Actual_Parameter_List_() ) {
           // TODO
         } // if
 
-        if ( Match_( RPAR ) )
+        if ( Match_( RPAR ) ) {
+          CallFunc( id );
           return true;
+        } // if
         else Error_();
 
       } // if
-      else if ( Match_( LSQB ) ) {
-        if ( Exp_() ) {
-          if ( !Match_( RSQB ) )
-            Error_();
-        } // if
+      else {
+        gData.Get_VarId( id );
+        if ( Match_( LSQB ) ) {
+          if ( Exp_() ) {
+            if ( !Match_( RSQB ) )
+              Error_();
+          } // if
 
-      } // else if
+        } // else if
 
-      return true;
+        return true;
+      } // else
+      
     } // if
     else if ( Match_( CONSTANT ) ) {
       return true;
@@ -1833,19 +1850,22 @@ private:
   bool Unsigned_Unary_Exp_() {
     if ( Match_( IDENTIFER ) ) {
       Token id = mToken_;
-      int type;
       if ( Match_( LPAR ) ) {
         
         if ( Actual_Parameter_List_() ) {
           // TODO
         } // if
         
-        if ( !Match_( RPAR ) )
+        if ( Match_( RPAR ) ) {
+          CallFunc( id );
+          return true;
+        } // if
+        else 
           Error_();
 
-        return true;
       } // if
       else {
+        gData.Get_VarId( id );
         if ( Match_( LSQB ) ) {
           if ( Exp_() ) {
             if ( !Match_( RSQB ) )
