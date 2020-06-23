@@ -1630,10 +1630,10 @@ private:
     else return false;
   } // Maybe_Equality_Exp_()
   // * rest_of_maybe_equality_exp : rest_of_maybe_relational_exp 
-  // *                              { ( EQ | NEQ ) maybe_relational_exp }
+  // *                              { ( EQEQ | NEQ ) maybe_relational_exp }
   bool Rest_Of_Maybe_Equality_Exp_() {
     if ( Rest_Of_Maybe_Relational_Exp_() ) {
-      while ( Match_( EQ ) || Match_( NEQ ) ) {
+      while ( Match_( EQEQ ) || Match_( NEQ ) ) {
         if ( Maybe_Relational_Exp_() ) {
           // TODO
         } // if
@@ -1899,7 +1899,8 @@ private:
   } // Unsigned_Unary_Exp_()
 
   void Error_() {
-    Error_Info info( mToken_.Line(), 2, mToken_.Name() );
+    Token token = mScn_.Get_Token();
+    Error_Info info( token.Line(), 2, token.Name() );
     throw info;
   } // Error_()
 
@@ -2098,7 +2099,7 @@ int main() {
   Runner runner;
   bool done = false;
   cout << "Our-C running ..." << endl;
-  do {
+  while ( !done ) {
     cout << "> ";
     try {
       parser.Parse();
@@ -2116,6 +2117,7 @@ int main() {
     catch( string msg ) { // * For debug
       cout << msg << endl;
     } // catch
-  } while ( !done ); // TODO solve the problem of EOF
+  } // while
+
   cout << "Our-C exited ..." << endl;
 } // main()

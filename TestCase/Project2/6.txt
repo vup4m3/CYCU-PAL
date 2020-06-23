@@ -1,0 +1,62 @@
+當測試「Test case 1 of 3」時，Input為>>1
+String str ;
+string str ;       // comment should be skipped
+char chArray[30] ;
+cin >> chArray1 ;  // undeclared identifier
+cin >> chArray ;
+str = "This is a fine day.\n" 
+      + chArray 
+      + "\n" 
+      ;
+str = str + "Isn't it?\n" ;
+cout << str ;
+str = "This is a fine day.\n" 
+      + "\n"
+      + chArray1   // undeclared identifier within a statement
+                   // once an input error occurs, parsing
+                   // restarts from the next line
+      ;      // a null statement is nevertheless "executable"
+float hello ;
+int x ;
+hello = 20
+        *           // comment should be skipped
+        ( ( x - hello ) / 34.5 
+          - 17   // to the right is comment : + ( hello - x
+          - ( hello - x ) 
+        ) 
+        ;
+x=(x+8)/hello/(hello-8.0);
+cout << "Value of 'hello' is now : " 
+     << hello 
+     << "\n" 
+     ;
+hello = 20
+        * 
+        ( ( x - hello135 ) / 34.5  // undeclared identifier
+          - 17   // input restarts from this line
+          - ( hello - x ) 
+        )        // but then, this ')' is unexpected
+        ;        // a null statement is fine though
+Done();
+<<
+
+正確的輸出應該是>>Our-C running ...
+> Line 1 : undefined identifier : 'String'
+> Definition of str entered ...
+> Definition of chArray entered ...
+> Line 1 : undefined identifier : 'chArray1'
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Line 3 : undefined identifier : 'chArray1'
+> Statement executed ...
+> Definition of hello entered ...
+> Definition of x entered ...
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Line 3 : undefined identifier : 'hello135'
+> Line 3 : unexpected token : ')'
+> Statement executed ...
+> Our-C exited ...<<
