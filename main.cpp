@@ -5,6 +5,7 @@
 # include <iomanip>
 # include <stdlib.h>
 # include <sstream>
+# include <string.h>
 
 using namespace std;
 
@@ -232,7 +233,6 @@ private:
   vector<string> mPool_;
 public:
   int Get_Addr( string str ) {
-    
     for ( int i = 0; i < mPool_.size() ; i++ )
       if ( str == mPool_[i] )
         return i;
@@ -242,8 +242,11 @@ public:
   } // Get_Addr()
 
   string Load_Str( int addr ) {
-    return mPool_[addr];
+    if ( addr < mPool_.size() )
+      return mPool_[addr];
+    else return "";
   } // Load_Str()
+
 }; 
 
 StringPool gStr_Pool;
@@ -271,6 +274,10 @@ public:
     return ( mArray_ == 0 ) ?  1 :  mArray_;
   } // Frame_Space()
 
+  int Array() {
+    return mArray_;
+  } // Array()
+
   int Type() {
     return mType_;
   } // Type()
@@ -292,7 +299,7 @@ public:
   } // Variable()
   // * For Constant
   Variable( int type, string str ) {
-    if ( type == TRUE_CONS || FALSE_CONS ) {
+    if ( type == TRUE_CONS || type == FALSE_CONS ) {
       VarType var_type( BOOL, false, 0 );
       mType_ = var_type;
       ( type == TRUE_CONS ) ? mValue_ = 1 : mValue_ = 0;
@@ -630,6 +637,51 @@ public:
     return false;
   } // Define_Func()
 
+  bool Id_Check( Token token ) {
+    string name = token.Name();
+    vector<VarId>::iterator ptr = mLocal_Var_Id_Table.begin(), end = mLocal_Var_Id_Table.end();
+    if ( name == "cout" )
+      return true;
+    else if ( name == "cin" )
+      return true;
+    do {
+      while ( ptr != end ) {
+        if ( ptr->Name() == name )
+          return true;
+        else ptr++;
+      } // while
+
+      if ( ptr == mLocal_Var_Id_Table.end() ) {
+        end = mGlobal_Var_Id_Table.end();
+        ptr = mGlobal_Var_Id_Table.begin();
+      } // if 
+    } while ( ptr != end );
+
+    if ( name == "ListAllVariables" ) {
+      return true; 
+    } // if
+    else if ( name == "ListAllFunctions" ) {
+      return true;
+    } // else if
+    else if ( name == "ListVariable" ) {
+      return true;
+    } // else if
+    else if ( name == "ListFunction" ) {
+      return true;
+    } // else if
+    else if ( name == "Done" ) {
+      return true;
+    } // else if
+    else {
+      for ( vector<FuncInfo>::iterator i = mFunc_Table.begin() ; i != mFunc_Table.end() ; i++ ) 
+        if ( i->Name() == name )
+          return true;
+    } // else
+    
+    Error_( token );
+    return false;
+  } // Id_Check()
+
   FuncInfo Get_Func_Info( Token token ) {
     string name = token.Name();
     vector<VarType> type_list;
@@ -801,7 +853,7 @@ public:
   } // Buffer_Clear()
   
   void Line_Counter_Reset() {
-    if ( Peek_Char_() == '\n' )
+    if ( !mLine_Input_.empty() && mLine_Input_[0] == '\n' )
       Get_Char_();
     mCurrent_Line_ = 1;
     mNext_Token.LineReset();
@@ -1266,9 +1318,9 @@ private:
       else Error_();
     } // else if
     else if ( Match_( WHILE ) ) {
-      if ( Match_( LBRACE ) ) {
+      if ( Match_( LPAR ) ) {
         if ( Exp_() ) {
-          if ( Match_( LBRACE ) ) {
+          if ( Match_( RPAR ) ) {
             if ( Statement_() ) {
               return true;
             } // if
@@ -1285,9 +1337,9 @@ private:
     else if ( Match_( DO ) ) {
       if ( Statement_() ) {
         if ( Match_( WHILE ) ) {
-          if ( Match_( LBRACE ) ) {
+          if ( Match_( LPAR ) ) {
             if ( Exp_() ) {
-              if ( Match_( RBRACE ) ) {
+              if ( Match_( RPAR ) ) {
                 if ( Match_( SEMI ) )
                   return true;
                 else Error_();
@@ -1333,6 +1385,7 @@ private:
   bool Basic_Exp_() {
     if ( Match_( IDENTIFER ) ) {
       Token id = mToken_;
+      gData.Id_Check( id );
       if ( Rest_Of_Id_Started_Basic_Exp_( id ) )  {
         // TODO 
         return true;
@@ -1343,6 +1396,7 @@ private:
     else if ( Match_( PP ) || Match_( MM ) ) {
       if ( Match_( IDENTIFER ) ) {
         Token id = mToken_;
+        gData.Id_Check( id );
         if ( Rest_Of_PPMM_Id_Started_Basic_Exp_( id ) ) {
           return true;
         } // if
@@ -1398,12 +1452,12 @@ private:
   // *                                      | '(' [ actual_parameter_list ] ')' romce_and_romloe
   bool Rest_Of_Id_Started_Basic_Exp_( Token id ) {
     if ( Match_( LPAR ) ) {
-      CallFunc( id );
       if ( Actual_Parameter_List_() ) {
         // TODO
       } // if
 
       if ( Match_( RPAR ) ) {
+        CallFunc( id );
         if ( Romce_And_Romloe_() ) {
 
           return true;
@@ -1800,6 +1854,7 @@ private:
   bool Signed_Unary_Exp_() {
     if ( Match_( IDENTIFER ) ) {
       Token id = mToken_;
+      gData.Id_Check( id );
       if ( Match_( LPAR ) ) {
         if ( Actual_Parameter_List_() ) {
           // TODO
@@ -1850,6 +1905,7 @@ private:
   bool Unsigned_Unary_Exp_() {
     if ( Match_( IDENTIFER ) ) {
       Token id = mToken_;
+      gData.Id_Check( id );
       if ( Match_( LPAR ) ) {
         
         if ( Actual_Parameter_List_() ) {
@@ -1941,9 +1997,9 @@ public:
   Variable Pop() {
     Variable var;
     if ( mStack_.empty() )
-      throw string( "Stack empty" );
+      return var;
     else 
-      var = *mStack_.end();
+      var = mStack_.back();
 
     mStack_.pop_back();
     return var;
@@ -1991,7 +2047,11 @@ private:
         else 
           cout << "string ";        
 
-        cout << i->Name() << " ;" << endl;
+        cout << i->Name();
+        if ( i->Var_Type().Array() > 0 )
+          cout << "[ " << i->Var_Type().Array() << " ]";
+        cout << " ;" << endl;
+
         done = true;
       } // if
 
@@ -2098,6 +2158,7 @@ int main() {
   Parser parser;
   Runner runner;
   bool done = false;
+  // debug if ( strcmp( ch, "1" ) ) done = true;
   cout << "Our-C running ..." << endl;
   while ( !done ) {
     cout << "> ";
