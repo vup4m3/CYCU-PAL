@@ -268,7 +268,7 @@ public:
   VarType() {
     mType_ = 0;
     mAddr_ = false;
-    mArray_ = -1;
+    mArray_ = 0;
   } // VarType()
 
   VarType( int type, bool is_addr, int array ) {
@@ -1474,8 +1474,10 @@ private:
 
       if ( Match_( RPAR ) ) {
         CallFunc( id );
-        if ( Romce_And_Romloe_() ) 
+        if ( Romce_And_Romloe_() ) {
+
           return true;
+        } // if
         else Error_();
 
       } // if
@@ -1870,7 +1872,6 @@ private:
       Token id = mToken_;
       gData.Id_Check( id );
       if ( Match_( LPAR ) ) {
-        gData.Get_Func_Info( id );
         if ( Actual_Parameter_List_() ) {
           // TODO
         } // if
@@ -1922,7 +1923,6 @@ private:
       Token id = mToken_;
       gData.Id_Check( id );
       if ( Match_( LPAR ) ) {
-        gData.Get_Func_Info( id );
         if ( Actual_Parameter_List_() ) {
           // TODO
         } // if
@@ -1939,17 +1939,21 @@ private:
         gData.Get_VarId( id );
         if ( Match_( LSQB ) ) {
           if ( Exp_() ) {
-            if ( !Match_( RSQB ) ) 
-              Error_();
+            if ( Match_( RSQB ) ) {
+              if ( Match_( PP ) || Match_( MM ) ) {
+                // TODO
+              } // if
+
+              return true;
+            } // if
+            else Error_();
           
           } // if
           else Error_();
+
         } // if
-        
-        if ( Match_( PP ) || Match_( MM ) ) 
-          ;
-        
-        return true;
+        else return true;
+
       } // else
 
     } // if
@@ -2021,10 +2025,6 @@ public:
     return var;
   } // Pop()
 
-  void Clear() {
-    mStack_.clear();
-  } // Clear()
-
 };
 
 class Runner {
@@ -2070,7 +2070,7 @@ private:
           cout << "string ";        
 
         cout << i->Name();
-        if ( i->Var_Type().Array() > -1 )
+        if ( i->Var_Type().Array() > 0 )
           cout << "[ " << i->Var_Type().Array() << " ]";
         cout << " ;" << endl;
 
@@ -2108,29 +2108,24 @@ private:
     vector<Token>::iterator token;
     int type = 0, next_type = 0;
     int space = 0;
-    bool first = false;
     for ( token = codes.begin() ; token != codes.end() ; token++ ) {
       type = token->Token_Type();
       if ( token + 1 != codes.end() )
         next_type = ( token + 1 )->Token_Type();
       else next_type = 0;
 
-      if ( type == RBRACE ) space--;
-
-      if ( first ) {
-        PrintSpace( space );
-        first = false;
-      } // if
-
-      if ( type == LBRACE ) {
-        space++;
-      } // if
-
-
       token->Print();
       if ( type == SEMI || type == LBRACE || type == RBRACE ) {
         cout << endl;
-        first = true;
+        if ( next_type != 0 ) {
+          if ( next_type == RBRACE )
+            PrintSpace( --space );
+          else if ( type == LBRACE ) // { \n SPACE
+            PrintSpace( ++space );
+          else PrintSpace( space );
+
+        } // if
+
       } // if
       // id( id[ id++ id-- ++id --id
       else if ( ! ( type == IDENTIFER && 
@@ -2158,7 +2153,6 @@ public:
     int i;
     vector<InterCode> codes = gData.mCode;
     InterCode cur_code;
-    mStack_.Clear();
     for ( i = mPc_ ; i < codes.size() ; i = mPc_ ) {
       cur_code = codes[i];
       if ( cur_code.Instr() == DONE )
