@@ -1,0 +1,40 @@
+當測試「Test case 3 of 4」時，Input為>>3
+int AddTwo( int x ) { return x + 2 ; } // comment
+int AddFive( int x ) { int y ; y = AddTwo( x ) ; // comment
+                       return y + 3 ; }          // comment
+ListAllFunctions() ;
+ListFunction( "AddFive" ) ;
+int x ;
+x = 100 ;
+x = x + AddFive( x ) ;
+if ( x > 200 )
+  x = AddTwo( 300 ) ;
+else
+  x = x + AddFive( 200 ) + 5 ;
+if ( AddTwo( x ) > 200 )
+  x = 5 + AddThree( 300 ) ;
+else
+  x = x + AddFive( 200 ) + 5 ;
+Done() ;
+<<
+
+正確的輸出應該是>>Our-C running ...
+> Definition of AddTwo() entered ...
+> Definition of AddFive() entered ...
+> AddFive()
+AddTwo()
+Statement executed ...
+> int AddFive( int x ) {
+  int y ;
+  y = AddTwo( x ) ;
+  return y + 3 ;
+}
+Statement executed ...
+> Definition of x entered ...
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Line 2 : undefined identifier : 'AddThree'
+> Line 1 : unexpected token : 'else'
+> Statement executed ...
+> Our-C exited ...<<

@@ -37,30 +37,23 @@ enum Type {
   STAR,        // *
   SLASH,       // /
   PERCENT,     // %
-  // ^
-  CIRCUMFLEX,  
+  CIRCUMFLEX,  // ^
   GREATER,     // >
   LESS,        // <
   GE,          // >=
   LE,          // <=
   EQEQ,        // ==
   NEQ,         // !=
-  // &
-  AMPER,       
-  // |
-  VBAR,        
-  // =
-  EQ,          
+  AMPER,       // &
+  VBAR,        // |
+  EQ,          // =
   NOT,         // !
-  // &&
-  AND,
+  AND,         // &&
   OR,          // ||
   PE,          // +=
   ME,          // -=
-  // *=
-  TE,
-  // /=
-  DE,          
+  TE,          // *=
+  DE,          // /=
   RE,          // %=
   PP,          // ++
   MM,          // --
@@ -226,9 +219,9 @@ public:
   } // LineReset()
   // * Print this token
   void Print() {
-    if ( mConstant_Type_ != STRING && mConstant_Type_ != CHAR ) 
+    if ( mConstant_Type_ != STR_CONS && mConstant_Type_ != CHAR_CONS ) 
       cout << mName_;
-    else if ( mConstant_Type_ == CHAR )
+    else if ( mConstant_Type_ == CHAR_CONS )
       cout << "'" << mName_ << "'";
     else  cout << "\"" << mName_ << "\"" ;
   } // Print()
@@ -736,8 +729,8 @@ public:
 
   void CodeInsert( bool is_func, vector<InterCode> new_code ) {
     if ( is_func ) {
-      // mCode.insert( mCode.begin() + mFunc_Code_End_, new_code.begin(), new_code.end() );
-      // mFunc_Code_End_ += new_code.size();
+      mCode.insert( mCode.begin() + mFunc_Code_End_, new_code.begin(), new_code.end() );
+      mFunc_Code_End_ += new_code.size();
     } // if
     else mCode.insert( mCode.end(), new_code.begin(), new_code.end() );
   } // CodeInsert()
@@ -942,7 +935,7 @@ public:
           else if ( state == AMPER )
             type == AMPER ? state = AND : interupt = true; // && or &
           else if ( state == VBAR )
-            type == VBAR ? state = OR : interupt = true; // || or |
+            type == VBAR ? state = VBAR : interupt = true; // || or |
           else if ( state == PLUS )
             type == EQ ? state = PE : ( type == PLUS ? state = PP : interupt = true );
           else if ( state == MINUS )
@@ -1467,7 +1460,6 @@ private:
   // *                                      | '(' [ actual_parameter_list ] ')' romce_and_romloe
   bool Rest_Of_Id_Started_Basic_Exp_( Token id ) {
     if ( Match_( LPAR ) ) {
-      gData.Get_Func_Info( id );
       if ( Actual_Parameter_List_() ) {
         // TODO
       } // if
@@ -1509,7 +1501,7 @@ private:
       else if ( Romce_And_Romloe_() ) {
         return true;
       } // else if 
-      else Error_();
+      else return false;
 
     } // else
     
@@ -1517,7 +1509,7 @@ private:
   } // Rest_Of_Id_Started_Basic_Exp_()
   // * rest_of_PPMM_Identifier_started_basic_exp : [ '[' expression ']' ] romce_and_romloe 
   bool Rest_Of_PPMM_Id_Started_Basic_Exp_( Token id ) {
-    gData.Get_VarId( id );
+    int type = UNDEFINE;
     if ( Match_( LSQB ) ) {
       if ( Exp_() ) {
         if ( !Match_( RSQB ) )
@@ -1549,7 +1541,7 @@ private:
   } // Actual_Parameter_List_()
   // * assignment_operator : '=' | TE (*=) | DE (/=) | RE (%=) | PE(+=) | ME(-=)
   bool Assignment_Op_() {
-    return Match_( EQ ) || Match_( TE ) || Match_( DE ) || Match_( RE ) || Match_( PE ) || Match_( ME );
+    return Match_( EQ ) || Match_( TE ) || Match_( RE ) || Match_( PE ) || Match_( ME );
   } // Assignment_Op_()
   // * rest_of_maybe_conditional_exp_and_rest_of_maybe_logical_OR_exp : rest_of_maybe_logical_OR_exp 
   // *            [ '?' basic_expression ':' basic_expression ]
@@ -1687,7 +1679,7 @@ private:
   // *                      { ( EQ | NEQ ) maybe_relational_exp}
   bool Maybe_Equality_Exp_() {
     if ( Maybe_Relational_Exp_() ) {
-      while ( Match_( EQEQ ) || Match_( NEQ ) ) {
+      while ( Match_( EQ ) || Match_( NEQ ) ) {
         if ( Maybe_Relational_Exp_() ) {
           // TODO
         } // if
@@ -1939,23 +1931,19 @@ private:
         gData.Get_VarId( id );
         if ( Match_( LSQB ) ) {
           if ( Exp_() ) {
-            if ( Match_( RSQB ) ) {
-              if ( Match_( PP ) || Match_( MM ) ) {
-                // TODO
-              } // if
-
-              return true;
-            } // if
-            else Error_();
+            if ( !Match_( RSQB ) )
+              Error_();
           
           } // if
-          else Error_();
-
         } // if
-        else return true;
+
+        if ( Match_( PP ) || Match_( MM ) ) {
+          // TODO
+        } // if
 
       } // else
 
+      return true;
     } // if
     else if ( Match_( CONSTANT ) ) {
       return true;
@@ -2064,8 +2052,6 @@ private:
           cout << "char ";
         else if ( type == FLOAT )
           cout << "float ";
-        else if ( type == BOOL )
-          cout << "bool ";
         else 
           cout << "string ";        
 

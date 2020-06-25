@@ -1,0 +1,124 @@
+當測試「Test case 3 of 4」時，Input為>>3
+int test ;
+char test ;  // re-define 'test'
+
+int salary[30] ;
+
+void InputSalary( int revenue[ 30 ] ) {
+  int i ;
+  i = 0 ;
+  while ( i < 30 ) {
+    cin >> revenue[ i ]
+    i++ ; 
+    i=i+1;
+  } // while ( i < 30 )
+} // InputSalary()
+
+void InputSalary( int revenue[ 30 ] ) {
+  int i ;
+  i = 0 ;
+  while ( i < 30 ) {
+    cin >> revenue[ i ] ;
+    i++ ;
+  } // while ( i < 30 )
+} // InputSalary()
+
+void Sort(int intArray[30]) {
+  int i;
+  i=0;
+  while(i<29){
+    int j;
+    j=i;
+    while(j<30){
+      if(intArray[j]<intArray[i]){
+      int temp;
+      temp=intArray[i];
+      intArray[i]=intArray[j];
+      intArray[j] =temp;
+      } // if intArray[ j ] < intArray[ i ]
+      j++ ;
+    } // while j < 30
+    i++ ;
+  } // while i < 29
+} // Sort()
+
+void InputSalary( int revenue[ 30 ] ) { // semantic error
+  int i ;
+  i = 0 ;
+  while ( i < 30 ) {
+    cout << revenue[ i ] ;
+    i++ ;
+  } // while ( i < 30 )
+} // InputSalary()
+
+void InputSalary( int revenue[ 30 ] ) {
+  int i ;
+  i = 0 ;
+  while ( i < 30 ) {
+    cin >> revenue[ i ] ;
+    i++ ;
+  } // while ( i < 30 )
+} // InputSalary()
+
+void OutputSalary( int revenue[ 30 ] ) {
+  int i ;
+  i = 0 ;
+  while ( i < 30 ) {
+    cout << revenue[ i ] ;
+    i++ ;
+  } // while ( i < 30 )
+} // OutputSalary()
+
+ListAllFunctions() ;
+
+ListFunction( "Sort" ) ;
+
+InputSalary( salary ) ;
+
+Sort( salary ) ;
+
+OutputSalary( salary ) ;
+
+Done() ;
+<<
+
+正確的輸出應該是>>Our-C running ...
+> Definition of test entered ...
+> New definition of test entered ...
+> Definition of salary entered ...
+> Line 7 : unexpected token : 'i'
+> Line 1 : undefined identifier : 'i'
+> Line 1 : unexpected token : '}'
+> Line 1 : unexpected token : '}'
+> Definition of InputSalary() entered ...
+> Definition of Sort() entered ...
+> New definition of InputSalary() entered ...
+> New definition of InputSalary() entered ...
+> Definition of OutputSalary() entered ...
+> InputSalary()
+OutputSalary()
+Sort()
+Statement executed ...
+> void Sort( int intArray[ 30 ] ) {
+  int i ;
+  i = 0 ;
+  while ( i < 29 ) {
+    int j ;
+    j = i ;
+    while ( j < 30 ) {
+      if ( intArray[ j ] < intArray[ i ] ) {
+        int temp ;
+        temp = intArray[ i ] ;
+        intArray[ i ] = intArray[ j ] ;
+        intArray[ j ] = temp ;
+      }
+      j++ ;
+    }
+    i++ ;
+  }
+}
+Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Statement executed ...
+> Our-C exited ...<<
