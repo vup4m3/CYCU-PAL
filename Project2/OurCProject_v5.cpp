@@ -1,4 +1,4 @@
-// TODO EOF process 
+// * This version could pass Project2
 # include <string>
 # include <vector>
 # include <iostream>
@@ -224,10 +224,6 @@ public:
   void LineReset() {
     mLine_ = 1;
   } // LineReset()
-
-  void LineSet( int line ) {
-    mLine_ = line;
-  } // LineSet()
   // * Print this token
   void Print() {
     if ( mConstant_Type_ != STRING && mConstant_Type_ != CHAR ) 
@@ -853,26 +849,18 @@ public:
     Buffer_Clear();
   } // Scanner()
   // * 消除Parse完一個指令後，當行殘留的空字元與註解
-  void Parse_End( int end_line ) {
-    if ( !mLine_Input_.empty() && mNext_Token.Token_Type() != 0 ) {
+  void Parse_End() {
+    if ( !mLine_Input_.empty() && mNext_Token.Token_Type() == 0 ) {
       if ( mLine_Input_.front() == ' ' || mLine_Input_.front() == '\t'  ) {
         mLine_Input_.erase( mLine_Input_.begin() );
-        Parse_End( end_line );
+        Parse_End();
       } // if
-      else if ( mNext_Token.Token_Type() == 0 &&  mLine_Input_.front() == '\n' ) {
+      else if ( mNext_Token.Token_Type() == 0 &&  mLine_Input_.front() == '\n' )
         Buffer_Clear();
-        // if ( mCurrent_Line_ > end_line ) 
-        //  mCurrent_Line_ -= end_line;
-
-      } // else if
       else if ( mLine_Input_.size() > 2 && mLine_Input_.front() == '/' ) 
-        if ( mLine_Input_[1] == '/' ) {
-          // if ( mCurrent_Line_ > end_line ) 
-          //   mCurrent_Line_ -= end_line;
+        if ( mLine_Input_[1] == '/' )
+          Buffer_Clear();
 
-        } // if
-
-      Buffer_Clear();
     } // if
   } // Parse_End()
   
@@ -2010,7 +1998,7 @@ public:
     if ( !User_Input_() )
       Error_();
       
-    mScn_.Parse_End( mToken_.Line() );
+    mScn_.Parse_End();
   } // Parse()
 
 };
